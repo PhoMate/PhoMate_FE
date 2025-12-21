@@ -14,3 +14,10 @@ export async function searchPhotos(query: string): Promise<Photo[]> {
     const response = await fetch(`/api/photos/search?q=${encodeURIComponent(query)}`);
     return response.json();
 }
+
+export async function searchMemberPhotos(memberId: string, q: string) {
+  const base = import.meta.env.VITE_API_BASE_URL;
+  const res = await fetch(`${base}/api/members/${memberId}/photos?q=${encodeURIComponent(q)}`);
+  if (!res.ok) throw new Error('사진 검색 실패');
+  return res.json();
+}

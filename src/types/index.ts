@@ -18,3 +18,9 @@ export type FeedResponse = {
     nextCursor?: string;
     hasMore: boolean;
 };
+
+export type EditPayload = {
+  brightness?: number;
+  contrast?: number;
+  saturation?: number;
+};

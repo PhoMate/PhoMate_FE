@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Heart, Wand2, Search } from 'lucide-react';
+import { X, Heart, Wand2, Search, Save } from 'lucide-react';
 import { PhotoDetail } from '../types';
+import { togglePhotoLike, savePhoto } from '../api/photos';
 import '../styles/PhotoDetailModal.css';
 
 type PhotoDetailModalProps = {
@@ -9,6 +10,7 @@ type PhotoDetailModalProps = {
     onClose: () => void;
     onAiEdit?: (photo: PhotoDetail) => void;
     onAiSearch?: (photo: PhotoDetail) => void;
+    currentMemberId?: string; // 추가
 };
 
 export default function PhotoDetailModal({
@@ -17,15 +19,63 @@ export default function PhotoDetailModal({
     onClose,
     onAiEdit,
     onAiSearch,
+    currentMemberId,
 }: PhotoDetailModalProps) {
     const [isLiked, setIsLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(photo?.likeCount || 0);
 
     if (!isOpen || !photo) return null;
 
-    const handleLike = () => {
+    const handleLike = async () => {
+        if (!photo) return;
+        // API가 준비되면 서버 연동
+        if (currentMemberId) {
+            try {
+                const res = await togglePhotoLike(currentMemberId, photo.id);
+                setIsLiked(res.liked);
+                setLikeCount(res.likeCount);
+                return;
+            } catch {
+                // 실패 시 로컬 토글로 폴백
+            }
+        }
         setIsLiked(!isLiked);
         setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
+    };
+
+    const handleSave = async () => {
+        if (!photo) return;
+
+        // 서버 저장 우선 (memberId가 있으면)
+        if (currentMemberId) {
+            try {
+                await savePhoto(currentMemberId, {
+                    originalUrl: photo.originalUrl,
+                    thumbnailUrl: photo.thumbnailUrl,
+                    title: photo.title,
+                });
+                alert('사진이 저장되었습니다.');
+                return;
+            } catch (e) {
+                // 서버 실패 시 로컬 다운로드로 폴백
+            }
+        }
+
+        // 로컬 다운로드 폴백
+        try {
+            const resp = await fetch(photo.originalUrl);
+            const blob = await resp.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${photo.title || 'photo'}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        } catch {
+            alert('사진 저장에 실패했습니다.');
+        }
     };
 
     return (
@@ -80,8 +130,8 @@ export default function PhotoDetailModal({
                             )}
                         </div>
 
-                        {/* AI Action Buttons */}
-                        <div className="action-buttons">
+                        {/* AI Action Buttons + 저장 */}
+                        <div className="action-buttons action-buttons--three">
                             <button
                                 className="action-btn ai-edit-btn"
                                 onClick={() => onAiEdit?.(photo)}
@@ -95,6 +145,13 @@ export default function PhotoDetailModal({
                             >
                                 <Search className="icon" />
                                 <span>유사 사진 찾기</span>
+                            </button>
+                            <button
+                                className="action-btn save-btn"
+                                onClick={handleSave}
+                            >
+                                <Save className="icon" />
+                                <span>사진 저장</span>
                             </button>
                         </div>
                     </div>

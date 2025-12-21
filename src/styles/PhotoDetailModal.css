@@ -167,6 +167,21 @@
     gap: 12px;
 }
 
+/* 3개 버튼일 때 */
+.action-buttons.action-buttons--three {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+.save-btn {
+    background: #f5f5f5;
+    color: #111;
+}
+
+.save-btn:hover {
+    background: #eaeaea;
+    transform: translateY(-2px);
+}
+
 .action-btn {
     display: flex;
     align-items: center;
