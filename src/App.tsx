@@ -1,73 +1,54 @@
 import React, { useState } from 'react';
-import './App.css'; 
-
-type TabType = 'search' | 'edit';
+import Sidebar from './components/Sidebar';
+import RightPanel from './components/RightPanel';
+import FeedPage from './components/FeedPage';
+import PhotoDetailModal from './components/PhotoDetailModal';
+import { Photo, PhotoDetail } from './types';
+import './App.css';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabType>('search'); 
+    const [activeNav, setActiveNav] = useState('home');
+    const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
+    const [selectedPhoto, setSelectedPhoto] = useState<PhotoDetail | null>(null);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  return (
-    <div className="app-container">
-      <nav className="sidebar">
-        <div className="logo">PHOMATE</div>
-        <ul className="nav-menu">
-          <li className="nav-item active">
-            <span>🏠</span> HOME
-          </li>
-          <li className="nav-item">
-            <span>📤</span> UPROAD
-          </li>
-          <li className="nav-item">
-            <span>👤</span> PROFILE
-          </li>
-          <li className="nav-item">
-            <span>⚙️</span> SETTING
-          </li>
-        </ul>
-      </nav>
+    const handlePhotoSelect = (photo: Photo) => {
+        setSelectedPhoto({
+            ...photo,
+            description: '사진에 대한 설명이 여기에 표시됩니다.',
+            uploadedBy: '사용자명',
+            uploadedAt: new Date().toISOString(),
+        });
+        setIsDetailModalOpen(true);
+    };
 
-      <main className="main-feed">
-        <div className="feed-header">
-          <h2>PHOMATE</h2>
+    return (
+        <div className="app-container">
+            <Sidebar activeNav={activeNav} onNavClick={setActiveNav} />
+            <FeedPage
+                onPhotoSelect={handlePhotoSelect}
+                isPanelOpen={isRightPanelOpen}
+            />
+            <RightPanel
+                isOpen={isRightPanelOpen}
+                onClose={() => setIsRightPanelOpen(false)}
+            />
+
+            {/* 패널 토글 버튼 */}
+            <button
+                className={`floating-chat-btn ${isRightPanelOpen ? 'with-panel' : ''}`}
+                onClick={() => setIsRightPanelOpen(prev => !prev)}
+            >
+                {isRightPanelOpen ? '패널 닫기' : '채팅 열기'}
+            </button>
+
+            <PhotoDetailModal
+                photo={selectedPhoto}
+                isOpen={isDetailModalOpen}
+                onClose={() => setIsDetailModalOpen(false)}
+                onAiEdit={() => setIsRightPanelOpen(true)}
+                onAiSearch={() => setIsRightPanelOpen(true)}
+            />
         </div>
-      </main>
-
-      <aside className="right-panel">
-        <div className="chat-header">
-          <div 
-            className={`chat-tab ${activeTab === 'search' ? 'active' : ''}`}
-            onClick={() => setActiveTab('search')}
-          >
-            검색
-          </div>
-          <div 
-            className={`chat-tab ${activeTab === 'edit' ? 'active' : ''}`}
-            onClick={() => setActiveTab('edit')}
-          >
-            편집
-          </div>
-          <div className="close-btn-area">
-            ✕
-          </div>
-        </div>
-
-        <div className="chat-body">
-          <div className="message-bubble message-bot">
-            사진에 대한 설명을 적어주세요.
-          </div>
-          
-          <button className="action-button">
-            사진 설명
-          </button>
-        </div>
-
-        <div className="chat-input-area">
-          <div className="input-wrapper">
-            <input type="text" placeholder="입력하세요..." className="chat-input" />
-            <button className="send-btn">전송</button>
-          </div>
-        </div>
-      </aside>
-    </div>
-  );
+    );
 }
