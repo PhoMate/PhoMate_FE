@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Phomate Frontend
 
-## Getting Started
+React + Vite 기반 사진 공유 플랫폼 프론트엔드
 
-First, run the development server:
+## 프로젝트 구조
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+src/
+├── components/      # React 컴포넌트
+├── pages/          # 페이지 컴포넌트
+├── api/            # API 함수
+├── types/          # TypeScript 타입
+├── styles/         # CSS 파일
+├── utils/          # 유틸 함수
+└── context/        # Context API
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 시작하기
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 설치
+```bash
+npm install
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 개발 서버 실행
+```bash
+npm run dev
+```
 
-## Learn More
+브라우저에서 [http://localhost:5173](http://localhost:5173) 열기
 
-To learn more about Next.js, take a look at the following resources:
+### 빌드
+```bash
+npm run build
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 프리뷰
+```bash
+npm run preview
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 주요 기능
 
-## Deploy on Vercel
+- 📸 사진 피드 (무한 스크롤)
+- 💬 AI 채팅 (SSE 스트리밍)
+- 🔐 Google OAuth 로그인 (PKCE)
+- ❤️ 좋아요/저장 기능
+- ✏️ 사진 편집 (밝기, 명도, 채도)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 기술 스택
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **프레임워크**: React 18
+- **빌드**: Vite
+- **언어**: TypeScript
+- **스타일**: CSS3
+- **인증**: Google OAuth 2.0 (PKCE)
+- **상태관리**: Context API
+
+## 환경변수 설정
+
+`.env` 파일 생성:
+
+```env
+VITE_API_BASE_URL=http://localhost:8080
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+VITE_GOOGLE_REDIRECT_URI=http://localhost:5173/oauth/google/callback
+```
+
+## ESLint
+
+TypeScript 프로젝트로 type-aware lint 규칙 적용
+
+```bash
+npm run lint
+```
+
+## 배포
+
+Vercel 또는 다른 정적 호스팅 서비스에 배포 가능

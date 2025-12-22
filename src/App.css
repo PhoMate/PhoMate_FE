@@ -1,0 +1,264 @@
+#root {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: #F8F9FA;
+  color: #333;
+  overflow: hidden;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+.sidebar {
+  width: 240px;
+  min-width: 240px;
+  background-color: #ffffff;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #eee;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: 900;
+  color: #444;
+  margin-bottom: 50px;
+  letter-spacing: -0.5px;
+  padding-left: 10px;
+}
+
+.nav-menu {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #999;
+  transition: all 0.2s ease;
+}
+
+.nav-item:hover {
+  background-color: #FFF9C4;
+  color: #Fbc02d;
+}
+
+.nav-item.active {
+  background-color: #FFD54F;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(255, 213, 79, 0.4);
+}
+
+.main-feed {
+  flex: 1;
+  padding: 40px;
+  overflow-y: auto;
+  background-color: #F8F9FA;
+}
+
+.feed-header h2 {
+  font-size: 26px;
+  font-weight: 800;
+  margin-bottom: 30px;
+  color: #333;
+}
+
+.right-panel {
+  width: 360px;
+  min-width: 360px;
+  background-color: #fff;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #eee;
+  box-shadow: -5px 0 20px rgba(0,0,0,0.02);
+  z-index: 10;
+}
+
+.chat-header {
+  display: flex;
+  height: 64px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.chat-tab {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 600;
+  font-size: 15px;
+  color: #aaa;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.chat-tab:hover {
+  color: #666;
+}
+
+.chat-tab.active {
+  color: #333;
+  box-shadow: inset 0 -3px 0 #333;
+}
+
+.close-btn-area {
+  width: 64px;
+  background-color: #FFD54F;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  color: white;
+  font-size: 18px;
+  transition: background-color 0.2s;
+}
+
+.close-btn-area:hover {
+  background-color: #FBC02D;
+}
+
+.chat-body {
+  flex: 1;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.message-bubble {
+  max-width: 85%;
+  padding: 14px 18px;
+  border-radius: 18px;
+  font-size: 14px;
+  line-height: 1.6;
+  position: relative;
+}
+
+.message-bot {
+  align-self: flex-start;
+  background-color: #F5F5F5;
+  color: #444;
+  border-top-left-radius: 4px;
+}
+
+.message-user {
+  align-self: flex-end;
+  background-color: #FFD54F;
+  color: #fff;
+  border-top-right-radius: 4px;
+}
+
+.action-button {
+  align-self: flex-end;
+  background-color: #FFD54F;
+  color: white;
+  padding: 10px 24px;
+  border-radius: 100px;
+  border: none;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(255, 213, 79, 0.3);
+  transition: transform 0.1s;
+}
+
+.action-button:hover {
+  transform: scale(1.05);
+}
+
+.chat-input-area {
+  padding: 24px;
+  background-color: #fff;
+  border-top: 1px solid #f9f9f9;
+}
+
+.input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.chat-input {
+  width: 100%;
+  padding: 16px 20px;
+  padding-right: 60px;
+  border-radius: 30px;
+  border: 1px solid #E0E0E0;
+  background-color: #fff;
+  outline: none;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.chat-input:focus {
+  border-color: #FFD54F;
+  box-shadow: 0 0 0 3px rgba(255, 213, 79, 0.1);
+}
+
+.send-btn {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ccc;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.send-btn:hover {
+  color: #FFD54F;
+}
+
+.floating-chat-btn {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 20;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 999px;
+  background: #FFD54F;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 8px 18px rgba(255, 213, 79, 0.35);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, right 0.2s ease;
+}
+
+.floating-chat-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 20px rgba(255, 213, 79, 0.45);
+}
+
+.floating-chat-btn.with-panel {
+  right: 400px; /* 패널이 열려 있을 때 버튼이 덮이지 않도록 살짝 왼쪽으로 */
+}
