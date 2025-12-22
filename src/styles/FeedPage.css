@@ -3,7 +3,8 @@
     padding: 40px;
     overflow-y: auto;
     background-color: #F8F9FA;
-    margin-left: 240px;
+    padding: 0 40px;
+    margin: 0;
     transition: margin-right 0.3s ease;
 }
 

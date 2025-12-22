@@ -3,6 +3,9 @@ import Sidebar from './components/Sidebar';
 import RightPanel from './components/RightPanel';
 import FeedPage from './components/FeedPage';
 import PhotoDetailModal from './components/PhotoDetailModal';
+import ProfilePage from './components/ProfilePage';
+import FollowPage, { FollowUser } from './components/FollowPage';
+import UploadPage from './components/UploadPage';
 import { Photo, PhotoDetail } from './types';
 import './App.css';
 
@@ -11,12 +14,22 @@ export default function App() {
     const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
     const [selectedPhoto, setSelectedPhoto] = useState<PhotoDetail | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [targetUser, setTargetUser] = useState<FollowUser | null>(null);
+
+    const handleGoToFollow = () => setActiveNav('follow');
+    const handleBackToProfile = () => setActiveNav('profile');
+    const handleBackToFollowList = () => setActiveNav('follow');
+
+    const handleUserClick = (user: FollowUser) => {
+        setTargetUser(user);
+        setActiveNav('user_profile');
+    };
 
     const handlePhotoSelect = (photo: Photo) => {
         setSelectedPhoto({
             ...photo,
-            description: '사진에 대한 설명이 여기에 표시됩니다.',
-            uploadedBy: '사용자명',
+            description: '상세 설명...',
+            uploadedBy: 'User',
             uploadedAt: new Date().toISOString(),
         });
         setIsDetailModalOpen(true);
@@ -25,16 +38,51 @@ export default function App() {
     return (
         <div className="app-container">
             <Sidebar activeNav={activeNav} onNavClick={setActiveNav} />
-            <FeedPage
-                onPhotoSelect={handlePhotoSelect}
-                isPanelOpen={isRightPanelOpen}
-            />
+            
+            {activeNav === 'home' && (
+                <FeedPage
+                    onPhotoSelect={handlePhotoSelect}
+                    isPanelOpen={isRightPanelOpen}
+                />
+            )}
+
+            {activeNav === 'upload' && (
+                <UploadPage />
+            )}
+
+            {activeNav === 'profile' && (
+                <ProfilePage 
+                    isMe={true} 
+                    onPhotoSelect={handlePhotoSelect} 
+                    onFollowClick={handleGoToFollow} 
+                />
+            )}
+
+            {activeNav === 'follow' && (
+                <FollowPage 
+                    onBack={handleBackToProfile} 
+                    onUserClick={handleUserClick} 
+                />
+            )}
+
+            {activeNav === 'user_profile' && targetUser && (
+                <ProfilePage 
+                    isMe={false} 
+                    userInfo={{
+                        name: targetUser.name,
+                        profileUrl: targetUser.profileUrl,
+                        description: '안녕하세요, 반가워요!'
+                    }}
+                    onPhotoSelect={handlePhotoSelect}
+                    onBack={handleBackToFollowList}
+                />
+            )}
+
             <RightPanel
                 isOpen={isRightPanelOpen}
                 onClose={() => setIsRightPanelOpen(false)}
             />
 
-            {/* 패널 토글 버튼 */}
             <button
                 className={`floating-chat-btn ${isRightPanelOpen ? 'with-panel' : ''}`}
                 onClick={() => setIsRightPanelOpen(prev => !prev)}

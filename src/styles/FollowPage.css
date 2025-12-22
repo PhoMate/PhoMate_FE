@@ -1,0 +1,99 @@
+.follow-page {
+    flex: 1;
+    background-color: #fff;
+    height: 100%;
+    overflow-y: auto; /* 세로 스크롤 */
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 헤더 */
+.follow-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.follow-header h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #333;
+    margin: 0;
+}
+
+.back-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.back-btn:hover {
+    background-color: #f5f5f5;
+}
+
+/* 그리드 레이아웃 */
+.follow-grid {
+    display: grid;
+    /* 화면 크기에 맞춰서 자동 배치 (최소 120px) */
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 30px;
+}
+
+/* 개별 유저 카드 */
+.follow-user-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 20px;
+    border-radius: 16px;
+    transition: transform 0.2s, background-color 0.2s;
+}
+
+.follow-user-card:hover {
+    background-color: #fafafa;
+    transform: translateY(-5px);
+}
+
+/* 둥근 이미지 */
+.user-avatar-wrapper {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid #fff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.user-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: 16px;
+    color: #333;
+}
+
+/* 팔로잉 상태 버튼 */
+.follow-btn {
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1px solid #ddd;
+    background-color: #fff;
+    font-size: 12px;
+    color: #666;
+    cursor: pointer;
+}
