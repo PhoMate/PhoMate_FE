@@ -1,12 +1,8 @@
-/* src/styles/UploadPage.css */
-
-/* 전체 페이지 레이아웃 */
 .upload-page {
     flex: 1;
     height: 100%;
     background-color: #fff;
-    /* [수정 1] 전체적인 왼쪽 여백을 줄여서 콘텐츠를 왼쪽으로 이동 */
-    padding: 40px 40px 40px 20px; /* 상 우 하 좌 */
+    padding: 40px 40px 40px 20px; 
     overflow: hidden;
 }
 
@@ -15,12 +11,10 @@
     width: 100%;
     height: 100%;
     max-width: 1200px;
-    /* [수정 2] 가운데 정렬을 해제하고, 좌우 요소 사이 간격을 넓힘 */
-    margin: 0; /* margin: 0 auto; 제거 */
-    gap: 100px; /* 기존 60px에서 확대 */
+    margin: 0;
+    gap: 100px;
 }
 
-/* ===== [왼쪽] 이미지 업로드 구역 ===== */
 .upload-left {
     flex: 1;
     background-color: #f0f0f0;
@@ -46,7 +40,6 @@
     border: none;
 }
 
-/* 플레이스홀더 (아이콘 + 텍스트) */
 .placeholder-container {
     display: flex;
     flex-direction: column;
@@ -77,7 +70,6 @@
     color: #999;
 }
 
-/* 이미지 미리보기 */
 .image-preview {
     width: 100%;
     height: 100%;
@@ -105,7 +97,6 @@
     background: rgba(0, 0, 0, 0.8);
 }
 
-/* ===== [오른쪽] 입력 폼 구역 ===== */
 .upload-right {
     flex: 1;
     display: flex;
@@ -122,11 +113,9 @@
     display: flex;
 }
 
-/* 제목 입력 */
 .input-title {
     width: 100%;
-    /* [수정 3] 제목 폰트 크기를 훨씬 키움 */
-    font-size: 54px; /* 기존 36px에서 확대 */
+    font-size: 54px; 
     font-weight: 800;
     border: none;
     border-bottom: 2px solid #eee;
@@ -145,21 +134,19 @@
     color: #ccc;
 }
 
-/* 날짜 표시 */
 .input-date {
-    font-size: 16px; /* 날짜도 살짝 키움 */
+    font-size: 16px; 
     color: #999;
     margin-top: 12px;
     font-family: monospace;
 }
 
-/* 설명 입력 (Textarea) */
 .input-desc {
     width: 100%;
     height: 100%;
     border: none;
     resize: none;
-    font-size: 18px; /* 설명 글씨도 조금 키움 */
+    font-size: 18px; 
     line-height: 1.6;
     color: #555;
     background: transparent;
@@ -170,7 +157,6 @@
     color: #ccc;
 }
 
-/* 해시태그 입력 */
 .input-label {
     display: block;
     font-size: 14px;
@@ -195,7 +181,6 @@
     border-color: #FFC107;
 }
 
-/* 하단 버튼 */
 .form-actions {
     display: flex;
     justify-content: flex-end;
