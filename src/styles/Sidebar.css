@@ -1,10 +1,12 @@
 .sidebar {
-  width: 208px; /* w-52 */
+  width: 208px; 
   height: 100vh;
-  background-color: #f9fafb; /* gray-50 */
-  border-right: 1px solid #e5e7eb; /* gray-200 */
+  background-color: #f9fafb; 
+  border-right: 1px solid #e5e7eb; 
   padding: 20px;
-  position: fixed;
+  position: relative;
+  display: flex;
+  flex-direction: column;
   left: 0;
   top: 0;
   z-index: 100;

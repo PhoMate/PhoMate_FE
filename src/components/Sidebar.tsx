@@ -10,8 +10,7 @@ export default function Sidebar({ activeNav = 'home', onNavClick }: SidebarProps
 	const navItems = [
 		{ id: 'home', label: 'HOME', icon: '🏠' },
 		{ id: 'upload', label: 'UPLOAD', icon: '📤' },
-		{ id: 'profile', label: 'PROFILE', icon: '👤' },
-		{ id: 'setting', label: 'SETTING', icon: '⚙️' },
+		{ id: 'profile', label: 'PROFILE', icon: '👤' }
 	];
 
 	return (
