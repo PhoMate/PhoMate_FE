@@ -4,7 +4,8 @@ import RightPanel from './components/RightPanel';
 import FeedPage from './components/FeedPage';
 import PhotoDetailModal from './components/PhotoDetailModal';
 import ProfilePage from './components/ProfilePage';
-import FollowPage, { FollowUser } from './components/FollowPage'; 
+import FollowPage, { FollowUser } from './components/FollowPage';
+import UploadPage from './components/UploadPage';
 import { Photo, PhotoDetail } from './types';
 import './App.css';
 
@@ -13,15 +14,15 @@ export default function App() {
     const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
     const [selectedPhoto, setSelectedPhoto] = useState<PhotoDetail | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-
     const [targetUser, setTargetUser] = useState<FollowUser | null>(null);
 
     const handleGoToFollow = () => setActiveNav('follow');
     const handleBackToProfile = () => setActiveNav('profile');
+    const handleBackToFollowList = () => setActiveNav('follow');
 
     const handleUserClick = (user: FollowUser) => {
-        setTargetUser(user);   
-        setActiveNav('user_profile'); 
+        setTargetUser(user);
+        setActiveNav('user_profile');
     };
 
     const handlePhotoSelect = (photo: Photo) => {
@@ -34,10 +35,6 @@ export default function App() {
         setIsDetailModalOpen(true);
     };
 
-    const handleBackToFollowList = () => {
-        setActiveNav('follow');
-    };
-
     return (
         <div className="app-container">
             <Sidebar activeNav={activeNav} onNavClick={setActiveNav} />
@@ -47,6 +44,10 @@ export default function App() {
                     onPhotoSelect={handlePhotoSelect}
                     isPanelOpen={isRightPanelOpen}
                 />
+            )}
+
+            {activeNav === 'upload' && (
+                <UploadPage />
             )}
 
             {activeNav === 'profile' && (
