@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Search, Edit3, Sliders } from 'lucide-react';
 import '../styles/RightPanel.css';
+import { startChatSession, streamChatSearch } from '../api/chat';
 
 type RightPanelProps = {
     isOpen: boolean;
@@ -29,7 +30,9 @@ export default function RightPanel({ isOpen, onClose }: RightPanelProps) {
     const [contrast, setContrast] = useState(50);
     const [saturation, setSaturation] = useState(50);
     const [isStreaming, setIsStreaming] = useState(false);
+    const [sessionId, setSessionId] = useState<string | null>(null);
     const streamTimerRef = useRef<number | null>(null);
+    const abortRef = useRef<(() => void) | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
     const panelClass = `right-panel ${isOpen ? 'open' : 'closed'}`;
@@ -43,7 +46,7 @@ export default function RightPanel({ isOpen, onClose }: RightPanelProps) {
         scrollToBottom();
     }, [messages]);
 
-    // 스트리밍 시뮬레이션
+    // 스트리밍 시뮬레이터는 fallback 용도로 유지
     const simulateStream = (botMessageId: string, fullText: string) => {
         if (streamTimerRef.current) {
             window.clearInterval(streamTimerRef.current);
@@ -80,7 +83,15 @@ export default function RightPanel({ isOpen, onClose }: RightPanelProps) {
         }, 25);
     };
 
-    const handleSendMessage = (e: React.FormEvent) => {
+    // 추가: result 전용 핸들러 (백엔드 result 이벤트 처리 지점)
+    const handleResult = (result: any) => {
+        // 필요 시 결과를 별도 상태/그리드에 반영
+        // 예: window.dispatchEvent(new CustomEvent('chat:result', { detail: result }));
+        console.log('RESULT:', result);
+    };
+
+    // 수정: 실제 API 연결 (첫 채팅=세션 생성, 이후=스트리밍)
+    const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         const text = inputMessage.trim();
         if (!text || isStreaming) return;
@@ -106,13 +117,66 @@ export default function RightPanel({ isOpen, onClose }: RightPanelProps) {
         setInputMessage('');
         setIsStreaming(true);
 
-        // ✅ 백엔드 연결 대비
-        // const response = await sendChatMessage(text);
-        // simulateStream(botMessageId, response);
-        
-        // 현재는 로컬 시뮬레이션
-        const fakeResponse = '요청을 받았어요. 곧 도와드릴게요!';
-        simulateStream(botMessageId, fakeResponse);
+        try {
+            // 1) 첫 메시지면 세션 생성
+            if (!sessionId) {
+                const res = await startChatSession({ message: text });
+                setSessionId(res.sessionId);
+                // 서버가 주는 첫 답변으로 봇 메시지 갱신
+                setMessages(prev =>
+                    prev.map(m => (m.id === botMessageId
+                        ? { ...m, content: res.message, streaming: false }
+                        : m))
+                );
+                setIsStreaming(false);
+                return;
+            }
+
+            // 2) 기존 세션이면 스트리밍(delta/result 분리)
+            let full = '';
+            const stop = streamChatSearch(
+                { sessionId, query: text },
+                {
+                    onDelta: (delta) => {
+                        full += delta;
+                        setMessages(prev =>
+                            prev.map(m => (m.id === botMessageId
+                                ? { ...m, content: full, streaming: true }
+                                : m))
+                        );
+                    },
+                    onResult: (result) => {
+                        handleResult(result);
+                    },
+                    onError: (err) => {
+                        setMessages(prev =>
+                            prev.map(m => (m.id === botMessageId
+                                ? { ...m, content: `오류: ${err}`, streaming: false }
+                                : m))
+                        );
+                        setIsStreaming(false);
+                    },
+                    onComplete: () => {
+                        setMessages(prev =>
+                            prev.map(m => (m.id === botMessageId
+                                ? { ...m, content: full, streaming: false }
+                                : m))
+                        );
+                        setIsStreaming(false);
+                    },
+                }
+            );
+            abortRef.current = stop;
+        } catch (err) {
+            console.error(err);
+            // 실패 시 간단한 fallback 메시지
+            setMessages(prev =>
+                prev.map(m => (m.id === botMessageId
+                    ? { ...m, content: '요청 처리 중 오류가 발생했습니다.', streaming: false }
+                    : m))
+            );
+            setIsStreaming(false);
+        }
     };
 
     const handleFileDrop = (e: React.DragEvent<HTMLFormElement>) => {
@@ -132,9 +196,10 @@ export default function RightPanel({ isOpen, onClose }: RightPanelProps) {
         setMessages(prev => [...prev, imgMsg]);
     };
 
-    // 언마운트 시 타이머 정리
+    // 언마운트 시 정리
     useEffect(() => {
         return () => {
+            abortRef.current?.();
             if (streamTimerRef.current) {
                 window.clearInterval(streamTimerRef.current);
             }
