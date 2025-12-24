@@ -1,29 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Photo } from '../types';
 import PhotoCard from './PhotoCard';
 import { ArrowLeft } from 'lucide-react';
+import { toggleFollow } from '../api/follow'; 
 import '../styles/ProfilePage.css';
 
 type UserInfo = {
+    id: number;           
     name: string;
     profileUrl: string;
     description?: string;
+    isFollowed?: boolean; 
 };
 
 type ProfilePageProps = {
     onPhotoSelect: (photo: Photo) => void;
     onFollowClick?: () => void;
-
     onBack?: () => void;
-
     userInfo?: UserInfo; 
     isMe?: boolean;
 };
 
-const myPhotos: Photo[] = [
-    { id: "101", title: "내 사진 1", likeCount: 142, thumbnailUrl: "https://images.unsplash.com/photo-1535268620699-00c64547120c?auto=format&fit=crop&w=400&q=80", originalUrl: "", createdAt: "" },
-    { id: "102", title: "내 사진 2", likeCount: 77, thumbnailUrl: "https://images.unsplash.com/photo-1596236940860-630e2381223e?auto=format&fit=crop&w=400&q=80", originalUrl: "", createdAt: "" },
-];
+const myPhotos: Photo[] = [ /* ... */ ];
 
 export default function ProfilePage({ 
     onPhotoSelect, 
@@ -33,10 +31,33 @@ export default function ProfilePage({
     isMe = true 
 }: ProfilePageProps) {
 
+    const [isFollowed, setIsFollowed] = useState(userInfo?.isFollowed || false);
+
+    useEffect(() => {
+        if (userInfo) {
+            setIsFollowed(userInfo.isFollowed || false);
+        }
+    }, [userInfo]);
+
     const displayProfile = {
         name: userInfo?.name || ".",
         img: userInfo?.profileUrl || "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=400&q=80",
         desc: userInfo?.description || "."
+    };
+
+    const handleToggleFollow = async () => {
+        if (!userInfo?.id) return;
+
+        const previousState = isFollowed;
+        setIsFollowed(!isFollowed);
+
+        try {
+            const result = await toggleFollow(userInfo.id);
+            setIsFollowed(result.followed);
+        } catch (error) {
+            console.error("팔로우 요청 실패:", error);
+            setIsFollowed(previousState); 
+        }
     };
 
     return (
@@ -51,11 +72,7 @@ export default function ProfilePage({
                 )}
                 
                 <div className="profile-image-container">
-                    <img 
-                        src={displayProfile.img} 
-                        alt="Profile" 
-                        className="profile-image" 
-                    />
+                    <img src={displayProfile.img} alt="Profile" className="profile-image" />
                 </div>
                 <div className="profile-text-info">
                     <h2>{displayProfile.name}</h2>
@@ -64,14 +81,20 @@ export default function ProfilePage({
                 
                 <div className="profile-actions">
                     {isMe ? (
-                        <>
-                          <button className="action-btn" onClick={onFollowClick}>
-                                팔로우 목록
-                            </button>
-                        </>
+                        <button className="action-btn" onClick={onFollowClick}>
+                            팔로우 목록
+                        </button>
                     ) : (
-                        <button className="action-btn" style={{ backgroundColor: '#FFC107', color: '#fff', border: 'none' }}>
-                            팔로우 하기
+                        <button 
+                            className="action-btn" 
+                            onClick={handleToggleFollow}
+                            style={{ 
+                                backgroundColor: isFollowed ? '#e0e0e0' : '#FFC107', 
+                                color: isFollowed ? '#333' : '#fff',
+                                border: 'none' 
+                            }}
+                        >
+                            {isFollowed ? '팔로잉' : '팔로우 하기'}
                         </button>
                     )}
                 </div>

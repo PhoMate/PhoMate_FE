@@ -14,14 +14,21 @@ export default function App() {
     const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
     const [selectedPhoto, setSelectedPhoto] = useState<PhotoDetail | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    
+    // 팔로우 페이지용 타겟 유저
     const [targetUser, setTargetUser] = useState<FollowUser | null>(null);
+    
+    // AI 편집용 사진 정보 (RightPanel로 전달)
+    const [photoToEdit, setPhotoToEdit] = useState<PhotoDetail | null>(null);
 
     const handleGoToFollow = () => setActiveNav('follow');
     const handleBackToProfile = () => setActiveNav('profile');
-    const handleBackToFollowList = () => setActiveNav('follow');
+    const handleBackToFollowList = () => {
+        setActiveNav('follow');
+    };
 
     const handleUserClick = (user: FollowUser) => {
-        setTargetUser(user);
+        setTargetUser(user); 
         setActiveNav('user_profile');
     };
 
@@ -33,6 +40,15 @@ export default function App() {
             uploadedAt: new Date().toISOString(),
         });
         setIsDetailModalOpen(true);
+    };
+
+    const handleUploadSuccess = () => setActiveNav('home');
+
+    // [AI 편집] 모달에서 버튼 클릭 시 실행
+    const handleAiEditRequest = (photo: PhotoDetail) => {
+        setPhotoToEdit(photo);       
+        setIsDetailModalOpen(false); 
+        setIsRightPanelOpen(true);   
     };
 
     return (
@@ -47,7 +63,7 @@ export default function App() {
             )}
 
             {activeNav === 'upload' && (
-                <UploadPage />
+                <UploadPage onUploadSuccess={handleUploadSuccess} />
             )}
 
             {activeNav === 'profile' && (
@@ -69,18 +85,24 @@ export default function App() {
                 <ProfilePage 
                     isMe={false} 
                     userInfo={{
+                        id: Number(targetUser.id), 
                         name: targetUser.name,
                         profileUrl: targetUser.profileUrl,
-                        description: '안녕하세요, 반가워요!'
+                        description: '안녕하세요, 반가워요!',
+                        isFollowed: targetUser.isFollowed 
                     }}
                     onPhotoSelect={handlePhotoSelect}
                     onBack={handleBackToFollowList}
                 />
             )}
 
-            <RightPanel
+             <RightPanel
                 isOpen={isRightPanelOpen}
                 onClose={() => setIsRightPanelOpen(false)}
+                selectedPhoto={photoToEdit} 
+                onUpdatePhoto={(newUrl) => {
+                    console.log("새 이미지:", newUrl);
+                }}
             />
 
             <button
@@ -94,7 +116,7 @@ export default function App() {
                 photo={selectedPhoto}
                 isOpen={isDetailModalOpen}
                 onClose={() => setIsDetailModalOpen(false)}
-                onAiEdit={() => setIsRightPanelOpen(true)}
+                onAiEdit={handleAiEditRequest}
                 onAiSearch={() => setIsRightPanelOpen(true)}
             />
         </div>
