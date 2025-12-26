@@ -14,6 +14,10 @@ export interface GoogleLoginResponse {
   memberId: string;
 }
 
+export function getAccessToken(): string | null {
+  return localStorage.getItem('accessToken');
+}
+
 export async function googleLogin(payload: GoogleLoginRequest): Promise<GoogleLoginResponse> {
   const res = await fetch(`${API_BASE}/api/auth/google`, {
     method: 'POST',

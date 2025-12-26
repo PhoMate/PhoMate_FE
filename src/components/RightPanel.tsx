@@ -1,101 +1,139 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Search, Edit3, Sliders } from 'lucide-react';
+import { X, Send, Search, Edit3, Undo, Redo, Save } from 'lucide-react';
 import '../styles/RightPanel.css';
-import { startChatSession, streamChatSearch } from '../api/chat';
 
+// API
+import { startChatSession, streamChatSearch } from '../api/chat';
+import { 
+    startEditSession, 
+    sendChatEdit, 
+    undoEdit, 
+    redoEdit, 
+    finalizeEdit, 
+    uploadDirectEdit 
+} from '../api/edit';
+
+// Components & Types
+import DirectEditor from './DirectEditor';
+import { PhotoDetail } from '../types';
+
+// --- Types ---
 type RightPanelProps = {
     isOpen: boolean;
     onClose: () => void;
+    selectedPhoto?: PhotoDetail | null;
+    onUpdatePhoto?: (newUrl: string) => void;
 };
 
 type TabType = 'search' | 'edit';
 
 type Message =
-  | { id: string; role: 'user' | 'bot'; content: string; streaming?: boolean; type: 'text' }
-  | { id: string; role: 'user'; type: 'image'; fileName: string; previewUrl: string };
+    | { id: string; role: 'user' | 'bot'; content: string; streaming?: boolean; type: 'text' }
+    | { id: string; role: 'user'; type: 'image'; fileName: string; previewUrl: string };
 
-export default function RightPanel({ isOpen, onClose }: RightPanelProps) {
+// --- Sub Component: 메시지 렌더링 (분리함) ---
+const MessageItem = ({ msg }: { msg: Message }) => {
+    const isUser = msg.role === 'user';
+    
+    return (
+        <div className={`message-row ${isUser ? 'is-user' : 'is-bot'}`}>
+            <div className={`message-bubble ${isUser ? 'message-user' : 'message-bot'}`}>
+                {msg.type === 'text' ? (
+                    <>
+                        {msg.content}
+                        {msg.role === 'bot' && msg.streaming && <span className="streaming-cursor">▍</span>}
+                    </>
+                ) : (
+                    <div className="image-msg-wrapper" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <img 
+                            src={msg.previewUrl} 
+                            alt={msg.fileName} 
+                            className="chat-image-preview" 
+                            style={{ maxWidth: '100px', borderRadius: '4px' }} 
+                        />
+                        <span style={{ fontSize: '12px', marginTop: '4px' }}>{msg.fileName}</span>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// --- Main Component ---
+export default function RightPanel({ isOpen, onClose, selectedPhoto, onUpdatePhoto }: RightPanelProps) {
+    // 1. UI State
     const [activeTab, setActiveTab] = useState<TabType>('search');
     const [inputMessage, setInputMessage] = useState('');
-    const [messages, setMessages] = useState<Message[]>([
-    {
-        id: 'm-1',
-        role: 'bot',
-        content: '사진에 대한 설명을 적어주세요.',
-        streaming: false,
-        type: 'text', // ✅ 누락된 타입 추가
-    },
-]);
-    const [brightness, setBrightness] = useState(50);
-    const [contrast, setContrast] = useState(50);
-    const [saturation, setSaturation] = useState(50);
-    const [isStreaming, setIsStreaming] = useState(false);
-    const [sessionId, setSessionId] = useState<string | null>(null);
-    const streamTimerRef = useRef<number | null>(null);
-    const abortRef = useRef<(() => void) | null>(null);
-    const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
     const panelClass = `right-panel ${isOpen ? 'open' : 'closed'}`;
 
+    // 2. Chat & Search State
+    const [messages, setMessages] = useState<Message[]>([
+        { id: 'm-1', role: 'bot', content: '무엇을 도와드릴까요?', streaming: false, type: 'text' },
+    ]);
+    const [isStreaming, setIsStreaming] = useState(false);
+    const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+
+    // 3. Edit State
+    const [editSessionId, setEditSessionId] = useState<number | null>(null);
+    const [editChatSessionId, setEditChatSessionId] = useState<number | null>(null);
+    const [currentEditUrl, setCurrentEditUrl] = useState<string | null>(null);
+    const [isDirectEditing, setIsDirectEditing] = useState(false);
+    const [isEditLoading, setIsEditLoading] = useState(false);
+
+    // Refs
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+    // --- Effects ---
+
     // 자동 스크롤
-    const scrollToBottom = () => {
+    useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
+    }, [messages, activeTab]);
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
-
-    // 스트리밍 시뮬레이터는 fallback 용도로 유지
-    const simulateStream = (botMessageId: string, fullText: string) => {
-        if (streamTimerRef.current) {
-            window.clearInterval(streamTimerRef.current);
+        if (selectedPhoto) {
+            setActiveTab('edit');
         }
+    }, [selectedPhoto]);
 
-        let idx = 0;
-        const step = 2;
+    // 편집 탭 진입 시 세션 초기화
+    useEffect(() => {
+        if (activeTab === 'edit' && selectedPhoto && !editSessionId) {
+            initializeEditSession();
+        }
+    }, [activeTab, selectedPhoto]);
 
-        streamTimerRef.current = window.setInterval(() => {
-            idx += step;
+    const initializeEditSession = async () => {
+        if (!selectedPhoto) return;
+        try {
+            setIsEditLoading(true);
+            // 편집 세션 생성
+            const editRes = await startEditSession(Number(selectedPhoto.id));
+            setEditSessionId(editRes.editSessionId);
+            setCurrentEditUrl(selectedPhoto.originalUrl || selectedPhoto.thumbnailUrl);
 
-            setMessages(prev =>
-                prev.map(m => {
-                    if (m.id !== botMessageId) return m;
-
-                    const nextContent = fullText.slice(0, idx);
-                    const done = idx >= fullText.length;
-
-                    return {
-                        ...m,
-                        content: nextContent,
-                        streaming: !done,
-                    };
-                })
-            );
-
-            if (idx >= fullText.length) {
-                if (streamTimerRef.current) {
-                    window.clearInterval(streamTimerRef.current);
-                }
-                streamTimerRef.current = null;
-                setIsStreaming(false);
-            }
-        }, 25);
+            // 편집용 챗 세션 생성 (데모용 임시 ID 사용)
+            // const chatRes = await startChatSession(); 
+            // setEditChatSessionId(chatRes.chatSessionId);
+            setEditChatSessionId(999); 
+        } catch (e) {
+            console.error(e);
+            alert('편집 세션을 시작할 수 없습니다.');
+        } finally {
+            setIsEditLoading(false);
+        }
     };
 
-    // 추가: result 전용 핸들러 (백엔드 result 이벤트 처리 지점)
-    const handleResult = (result: any) => {
-        // 필요 시 결과를 별도 상태/그리드에 반영
-        // 예: window.dispatchEvent(new CustomEvent('chat:result', { detail: result }));
-        console.log('RESULT:', result);
-    };
+    // --- Handlers ---
 
-    // 수정: 실제 API 연결 (첫 채팅=세션 생성, 이후=스트리밍)
+    const handleTabChange = (tab: TabType) => setActiveTab(tab);
+
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         const text = inputMessage.trim();
-        if (!text || isStreaming) return;
+        if (!text || isStreaming || isEditLoading) return;
 
+        // 유저 메시지 추가
         const userMessage: Message = {
             id: crypto.randomUUID(),
             role: 'user',
@@ -103,233 +141,225 @@ export default function RightPanel({ isOpen, onClose }: RightPanelProps) {
             streaming: false,
             type: 'text',
         };
-
-        const botMessageId = crypto.randomUUID();
-        const botMessage: Message = {
-            id: botMessageId,
-            role: 'bot',
-            content: '',
-            streaming: true,
-            type: 'text',
-        };
-
-        setMessages(prev => [...prev, userMessage, botMessage]);
+        setMessages(prev => [...prev, userMessage]);
         setInputMessage('');
-        setIsStreaming(true);
+
+        if (activeTab === 'edit') {
+            await processEditMessage(text);
+        } else {
+            await processSearchMessage(text);
+        }
+    };
+
+    // [Logic] 편집 모드 메시지 처리 (AI 수정)
+    const processEditMessage = async (text: string) => {
+        if (!editSessionId || !editChatSessionId) return;
+
+        setIsEditLoading(true);
+        const botMsgId = crypto.randomUUID();
+        
+        // 봇 로딩 메시지 추가
+        setMessages(prev => [...prev, {
+            id: botMsgId, role: 'bot', content: 'AI가 이미지를 수정 중입니다...', streaming: true, type: 'text'
+        }]);
 
         try {
-            // 1) 첫 메시지면 세션 생성
-            if (!sessionId) {
-                const res = await startChatSession({ message: text });
-                setSessionId(res.sessionId);
-                // 서버가 주는 첫 답변으로 봇 메시지 갱신
-                setMessages(prev =>
-                    prev.map(m => (m.id === botMessageId
-                        ? { ...m, content: res.message, streaming: false }
-                        : m))
-                );
-                setIsStreaming(false);
-                return;
-            }
+            const res = await sendChatEdit(editChatSessionId, editSessionId, text);
+            setCurrentEditUrl(res.editedUrl); // 이미지 업데이트
+            
+            // 봇 응답 업데이트
+            setMessages(prev => prev.map(m => m.id === botMsgId ? {
+                ...m, content: res.assistantContent || '수정이 완료되었습니다.', streaming: false
+            } : m));
+        } catch (e) {
+            console.error(e);
+            setMessages(prev => prev.map(m => m.id === botMsgId ? {
+                ...m, content: '수정 중 오류가 발생했습니다.', streaming: false
+            } : m));
+        } finally {
+            setIsEditLoading(false);
+        }
+    };
 
-            // 2) 기존 세션이면 스트리밍(delta/result 분리)
-            let full = '';
-            const stop = streamChatSearch(
-                { sessionId, query: text },
-                {
-                    onDelta: (delta) => {
-                        full += delta;
-                        setMessages(prev =>
-                            prev.map(m => (m.id === botMessageId
-                                ? { ...m, content: full, streaming: true }
-                                : m))
-                        );
-                    },
-                    onResult: (result) => {
-                        handleResult(result);
-                    },
-                    onError: (err) => {
-                        setMessages(prev =>
-                            prev.map(m => (m.id === botMessageId
-                                ? { ...m, content: `오류: ${err}`, streaming: false }
-                                : m))
-                        );
-                        setIsStreaming(false);
-                    },
-                    onComplete: () => {
-                        setMessages(prev =>
-                            prev.map(m => (m.id === botMessageId
-                                ? { ...m, content: full, streaming: false }
-                                : m))
-                        );
-                        setIsStreaming(false);
-                    },
-                }
-            );
-            abortRef.current = stop;
+    // [Logic] 검색 모드 메시지 처리 (스트리밍)
+    const processSearchMessage = async (text: string) => {
+        setIsStreaming(true);
+        const botMessageId = crypto.randomUUID();
+        setMessages(prev => [...prev, { id: botMessageId, role: 'bot', content: '', streaming: true, type: 'text' }]);
+
+        try {
+            if (!chatSessionId) {
+                // 첫 세션 시작
+                const res = await startChatSession({ message: text });
+                setChatSessionId(res.sessionId);
+                setMessages(prev => prev.map(m => m.id === botMessageId ? { ...m, content: res.message, streaming: false } : m));
+                setIsStreaming(false);
+            } else {
+                // 스트리밍
+                let fullText = '';
+                streamChatSearch(
+                    { sessionId: chatSessionId, query: text },
+                    {
+                        onDelta: (delta) => {
+                            fullText += delta;
+                            setMessages(prev => prev.map(m => m.id === botMessageId ? { ...m, content: fullText, streaming: true } : m));
+                        },
+                        onResult: (result) => console.log(result),
+                        onError: () => setIsStreaming(false),
+                        onComplete: () => {
+                            setMessages(prev => prev.map(m => m.id === botMessageId ? { ...m, content: fullText, streaming: false } : m));
+                            setIsStreaming(false);
+                        }
+                    }
+                );
+            }
         } catch (err) {
-            console.error(err);
-            // 실패 시 간단한 fallback 메시지
-            setMessages(prev =>
-                prev.map(m => (m.id === botMessageId
-                    ? { ...m, content: '요청 처리 중 오류가 발생했습니다.', streaming: false }
-                    : m))
-            );
             setIsStreaming(false);
         }
     };
 
-    const handleFileDrop = (e: React.DragEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        if (isStreaming) return;
-        const file = e.dataTransfer.files?.[0];
-        if (!file || !file.type.startsWith('image/')) return;
-
-        const previewUrl = URL.createObjectURL(file);
-        const imgMsg: Message = {
-            id: crypto.randomUUID(),
-            role: 'user',
-            type: 'image',
-            fileName: file.name,
-            previewUrl,
-        };
-        setMessages(prev => [...prev, imgMsg]);
+    // [Logic] 편집 도구 핸들러
+    const handleUndo = async () => {
+        if (!editSessionId) return;
+        try {
+            const res = await undoEdit(editSessionId);
+            setCurrentEditUrl(res.imageUrl);
+        } catch (e) { alert('이전 단계가 없습니다.'); }
     };
 
-    // 언마운트 시 정리
-    useEffect(() => {
-        return () => {
-            abortRef.current?.();
-            if (streamTimerRef.current) {
-                window.clearInterval(streamTimerRef.current);
-            }
-        };
-    }, []);
+    const handleRedo = async () => {
+        if (!editSessionId) return;
+        try {
+            const res = await redoEdit(editSessionId);
+            setCurrentEditUrl(res.imageUrl);
+        } catch (e) { alert('다음 단계가 없습니다.'); }
+    };
 
+    const handleFinalize = async () => {
+        if (!editSessionId) return;
+        try {
+            const res = await finalizeEdit(editSessionId);
+            if (onUpdatePhoto) onUpdatePhoto(res.finalUrl);
+            alert('저장되었습니다.');
+            onClose();
+        } catch (e) { alert('저장 실패'); }
+    };
+
+    const handleDirectEditSave = async (file: File) => {
+        if (!editSessionId) return;
+        try {
+            setIsEditLoading(true);
+            const res = await uploadDirectEdit(editSessionId, file);
+            setCurrentEditUrl(res.imageUrl);
+            setIsDirectEditing(false);
+        } catch (e) {
+            alert('업로드 실패');
+        } finally {
+            setIsEditLoading(false);
+        }
+    };
+
+    // --- Render ---
     return (
-        <aside className={panelClass} aria-hidden={!isOpen}>
-            <div className="chat-header">
-                <div className="tab-buttons">
-                    <button
-                        className={`tab-button ${activeTab === 'search' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('search')}
-                    >
-                        <Search className="icon" />
-                        <span>검색</span>
-                    </button>
-                    <button
-                        className={`tab-button ${activeTab === 'edit' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('edit')}
-                    >
-                        <Edit3 className="icon" />
-                        <span>편집</span>
-                    </button>
+        <>
+            <aside className={panelClass} aria-hidden={!isOpen}>
+                {/* 1. Header */}
+                <div className="chat-header">
+                    <div className="tab-buttons">
+                        <button
+                            className={`tab-button ${activeTab === 'search' ? 'active' : ''}`}
+                            onClick={() => handleTabChange('search')}
+                        >
+                            <Search className="icon" /> <span>검색</span>
+                        </button>
+                        <button
+                            className={`tab-button ${activeTab === 'edit' ? 'active' : ''}`}
+                            onClick={() => handleTabChange('edit')}
+                        >
+                            <Edit3 className="icon" /> <span>편집</span>
+                        </button>
+                    </div>
+                    <button className="close-btn" onClick={onClose}><X className="icon" /></button>
                 </div>
-                <button className="close-btn" onClick={onClose} aria-label="패널 닫기">
-                    <X className="icon" />
-                </button>
-            </div>
 
-            {activeTab === 'search' ? (
-                <div className="chat-body">
-                    {messages.map(msg => {
-                      if (msg.type === 'image') {
-                        return (
-                          <div key={msg.id} className="message-row is-user">
-                            <div className="message-bubble message-user">
-                              <img src={msg.previewUrl} alt={msg.fileName} className="chat-image-preview" />
-                              <div className="chat-image-name">{msg.fileName}</div>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                        return (
-                            <div key={msg.id} className={`message-row ${msg.role === 'user' ? 'is-user' : 'is-bot'}`}>
-                                <div className={`message-bubble ${msg.role === 'user' ? 'message-user' : 'message-bot'}`}>
-                                    {msg.content}
-                                    {msg.role === 'bot' && msg.streaming ? (
-                                        <span className="streaming-cursor">▍</span>
-                                    ) : null}
+                {/* 2. Content Body */}
+                {activeTab === 'search' ? (
+                    // --- Search Tab ---
+                    <div className="chat-body">
+                        {messages.map(msg => <MessageItem key={msg.id} msg={msg} />)}
+                        <div ref={messagesEndRef} />
+                    </div>
+                ) : (
+                    // --- Edit Tab ---
+                    <div className="edit-body" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                        
+                        {/* Preview Area */}
+                        <div className="edit-preview-area" style={{ flex: 1, position: 'relative', backgroundColor: '#f0f0f0', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {isEditLoading && (
+                                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+                                    처리 중...
                                 </div>
-                            </div>
-                        );
-                    })}
-                    <div ref={messagesEndRef} />
-                </div>
-            ) : (
-                <div className="edit-body">
-                    <div className="section">
-                        <h3 className="section-title">
-                            <Sliders className="icon" /> 기본 보정
-                        </h3>
-                        <div className="section-group">
-                            <label className="section-label">밝기 {brightness}%</label>
-                            <input
-                                type="range"
-                                min="0"
-                                max="100"
-                                value={brightness}
-                                onChange={e => setBrightness(Number(e.target.value))}
-                                className="slider"
-                            />
-                            <label className="section-label">대비 {contrast}%</label>
-                            <input
-                                type="range"
-                                min="0"
-                                max="100"
-                                value={contrast}
-                                onChange={e => setContrast(Number(e.target.value))}
-                                className="slider"
-                            />
-                            <label className="section-label">채도 {saturation}%</label>
-                            <input
-                                type="range"
-                                min="0"
-                                max="100"
-                                value={saturation}
-                                onChange={e => setSaturation(Number(e.target.value))}
-                                className="slider"
-                            />
+                            )}
+                            {currentEditUrl ? (
+                                <img src={currentEditUrl} alt="Editing" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                            ) : (
+                                <div style={{ color: '#888' }}>편집할 이미지가 없습니다.</div>
+                            )}
                         </div>
-                    </div>
 
-                    <div className="section">
-                        <h3 className="section-title">프리셋</h3>
-                        <div className="preset-grid">
-                            {['Vivid', 'B&W', 'Vintage', 'Cool', 'Warm', 'Film'].map(name => (
-                                <button key={name} type="button" className="preset-btn">
-                                    {name}
-                                </button>
-                            ))}
+                        {/* Controls */}
+                        <div className="edit-controls" style={{ display: 'flex', gap: '8px', marginBottom: '16px', justifyContent: 'center' }}>
+                            <button onClick={handleUndo} className="control-btn" title="실행 취소"><Undo size={20} /></button>
+                            <button onClick={handleRedo} className="control-btn" title="다시 실행"><Redo size={20} /></button>
+                            <div style={{ width: '1px', background: '#ddd', margin: '0 8px' }}></div>
+                            <button 
+                                onClick={() => setIsDirectEditing(true)} 
+                                className="control-btn" 
+                                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                            >
+                                <Edit3 size={16} /> 직접 편집
+                            </button>
                         </div>
-                    </div>
+                        
+                        {/* Chat Log for Edit */}
+                        <div className="chat-body" style={{ flex: 1, minHeight: '150px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+                            {messages.map(msg => <MessageItem key={msg.id} msg={msg} />)}
+                            <div ref={messagesEndRef} />
+                        </div>
 
-                    <button type="button" className="apply-btn">적용하기</button>
-                </div>
+                        {/* Save Button */}
+                        <button onClick={handleFinalize} className="apply-btn" style={{ marginTop: 'auto' }}>
+                            <Save size={16} style={{ marginRight: '8px' }}/> 저장 및 종료
+                        </button>
+                    </div>
+                )}
+
+                {/* 3. Input Area */}
+                <form className="chat-input-area" onSubmit={handleSendMessage}>
+                    <div className="input-wrapper">
+                        <input
+                            type="text"
+                            placeholder={activeTab === 'edit' ? "AI에게 수정 요청 (예: 배경 지워줘)" : "무엇이든 물어보세요..."}
+                            className="chat-input"
+                            value={inputMessage}
+                            onChange={e => setInputMessage(e.target.value)}
+                            disabled={isStreaming || isEditLoading}
+                        />
+                        <button type="submit" className="send-btn" disabled={isStreaming || isEditLoading}>
+                            <Send className="icon" /> 전송
+                        </button>
+                    </div>
+                </form>
+            </aside>
+
+            {/* Direct Editor Modal */}
+            {isDirectEditing && currentEditUrl && (
+                <DirectEditor
+                    imageUrl={currentEditUrl}
+                    onSave={handleDirectEditSave}
+                    onCancel={() => setIsDirectEditing(false)}
+                />
             )}
-
-            <form
-              className="chat-input-area"
-              onSubmit={handleSendMessage}
-              onDragOver={e => e.preventDefault()}
-              onDrop={handleFileDrop}
-            >
-                <div className="input-wrapper">
-                    <input
-                        type="text"
-                        placeholder={isStreaming ? 'AI가 답변 중...' : '입력하세요...'}
-                        className="chat-input"
-                        value={inputMessage}
-                        onChange={e => setInputMessage(e.target.value)}
-                        disabled={isStreaming}
-                    />
-                    <button type="submit" className="send-btn" disabled={isStreaming}>
-                        <Send className="icon" />
-                        전송
-                    </button>
-                </div>
-            </form>
-        </aside>
+        </>
     );
 }
