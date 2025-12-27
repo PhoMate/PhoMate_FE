@@ -1,41 +1,72 @@
 import { GOOGLE_CONFIG } from '../config/oauth';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export interface GoogleLoginRequest {
   code: string;
-  codeVerifier: string;
   redirectUri: string;
+  codeVerifier: string;
 }
 
 export interface GoogleLoginResponse {
-  accessToken: string;
-  refreshToken?: string;
   memberId: string;
+  accessToken: string;
+  refreshToken: string;
 }
 
-export async function googleLogin(payload: GoogleLoginRequest): Promise<GoogleLoginResponse> {
-  const res = await fetch(`${API_BASE}/api/auth/google`, {
+export const googleLogin = async (
+  request: GoogleLoginRequest
+): Promise<GoogleLoginResponse> => {
+  const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      code: request.code,
+      redirectUri: request.redirectUri,
+      codeVerifier: request.codeVerifier,
+    }),
   });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Google 로그인 실패');
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || '로그인 실패');
   }
-  return res.json();
-}
 
-export async function reissueToken(refreshToken: string): Promise<GoogleLoginResponse> {
-  const res = await fetch(`${API_BASE}/api/auth/reissue`, {
+  const data = await response.json();
+  return {
+    memberId: data.memberId,
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken,
+  };
+};
+
+// 토큰 재발급
+export const reissueToken = async (
+  refreshToken: string
+): Promise<GoogleLoginResponse> => {
+  const response = await fetch(`${API_BASE_URL}/api/auth/reissue`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refreshToken }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      refreshToken,
+    }),
   });
-  if (!res.ok) throw new Error('토큰 재발급 실패');
-  return res.json();
-}
+
+  if (!response.ok) {
+    throw new Error('토큰 재발급 실패');
+  }
+
+  const data = await response.json();
+  return {
+    memberId: data.memberId,
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken,
+  };
+};
 
 export async function logout(): Promise<void> {
   localStorage.removeItem('accessToken');

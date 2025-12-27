@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getPkceVerifier, clearPkceVerifier } from '../utils/pkce';
-import { googleLogin } from '../api/auth.ts';
+import { googleLogin } from '../api/auth';
 
 export default function OAuthGoogleCallbackPage() {
   const navigate = useNavigate();
@@ -14,46 +14,38 @@ export default function OAuthGoogleCallbackPage() {
         // 1. URL에서 code 추출
         const params = new URLSearchParams(window.location.search);
         const code = params.get('code');
-        const errorParam = params.get('error');
-
-        if (errorParam) {
-          throw new Error(`Google 인증 실패: ${errorParam}`);
-        }
 
         if (!code) {
           throw new Error('인증 코드를 받지 못했습니다.');
         }
 
-        // 2. sessionStorage에서 verifier 추출
+        // 2. PKCE verifier 추출
         const codeVerifier = getPkceVerifier();
         if (!codeVerifier) {
-          throw new Error('PKCE verifier를 찾을 수 없습니다. 다시 로그인해주세요.');
+          throw new Error('PKCE verifier를 찾을 수 없습니다.');
         }
 
         // 3. 백엔드에 로그인 요청
         const response = await googleLogin({
           code,
-          codeVerifier,
           redirectUri: import.meta.env.VITE_GOOGLE_REDIRECT_URI,
+          codeVerifier,
         });
 
         // 4. 토큰 저장
         localStorage.setItem('accessToken', response.accessToken);
-        if (response.refreshToken) {
-          localStorage.setItem('refreshToken', response.refreshToken);
-        }
-        if (response.memberId) {
-          localStorage.setItem('memberId', response.memberId);
-        }
+        localStorage.setItem('refreshToken', response.refreshToken);
+        localStorage.setItem('memberId', response.memberId);
 
-        // 5. URL 정리
-        window.history.replaceState({}, '', '/oauth/google/callback');
+        // 5. PKCE verifier 삭제
+        clearPkceVerifier();
 
-        // 6. 홈페이지로 이동
+        // 6. 홈으로 이동
+        setIsLoading(false);
         navigate('/');
-      } catch (err) {
-        console.error('콜백 처리 실패:', err);
-        setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
+      } catch (err: any) {
+        console.error('로그인 실패:', err);
+        setError(err.message || '로그인 처리 중 오류가 발생했습니다.');
         setIsLoading(false);
       }
     };
@@ -62,14 +54,21 @@ export default function OAuthGoogleCallbackPage() {
   }, [navigate]);
 
   if (isLoading) {
-    return <div className="loading">로그인 처리 중입니다...</div>;
+    return (
+      <div className="callback-loading">
+        <p>로그인 처리 중입니다...</p>
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="error">
+      <div className="callback-error">
+        <h2>로그인 실패</h2>
         <p>{error}</p>
-        <button onClick={() => window.location.href = '/'}>홈으로 돌아가기</button>
+        <button onClick={() => navigate('/login')}>
+          로그인 페이지로 돌아가기
+        </button>
       </div>
     );
   }
