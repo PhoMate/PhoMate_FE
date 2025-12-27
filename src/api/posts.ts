@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import { PostListParams, PostListResponse, PostDetail, AuthorPostListParams, UpsertPostPayload } from '../types/post';
+import type { PostListParams, PostListResponse, PostDetail, AuthorPostListParams, UpsertPostPayload } from '../types/post';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // 공통: 쿼리스트링 생성
@@ -24,7 +24,7 @@ export async function fetchPostsByAuthor(params: AuthorPostListParams): Promise<
   if (!res.ok) throw new Error('작성자 게시글 조회 실패');
   return res.json();
 }
-
+ 
 export async function fetchPostDetail(postId: number): Promise<PostDetail> {
   const res = await fetch(`${API_BASE_URL}/api/posts/${postId}`, { credentials: 'include' });
   if (!res.ok) throw new Error('게시글 상세 조회 실패');
@@ -64,4 +64,21 @@ export async function deletePost(postId: number): Promise<void> {
     credentials: 'include',
   });
   if (!res.ok) throw new Error('게시글 삭제 실패');
+}
+
+export async function togglePostLike(postId: number): Promise<{ liked: boolean; likeCount: number }> {
+  const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/likes`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error('게시글 좋아요 토글 실패');
+  return res.json();
+}
+
+export async function fetchPostsByPage(params: PostListParams = {}): Promise<PostListResponse> {
+  const query = qs(params);
+  const res = await fetch(`${API_BASE_URL}/api/posts${query ? `?${query}` : ''}`, { credentials: 'include' });
+  if (!res.ok) throw new Error('게시글 목록 조회 실패');
+  const data = await res.json();
+  return data;
 }

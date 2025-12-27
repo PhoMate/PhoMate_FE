@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import LoginPage from './components/LoginPage';
 import OAuthGoogleCallbackPage from './pages/OAuthGoogleCallbackPage';
 import Sidebar from './components/Sidebar';
@@ -13,6 +13,7 @@ import { Photo, PhotoDetail } from './types';
 import './App.css';
 
 function MainApp() {
+    const navigate = useNavigate();
     const [activeNav, setActiveNav] = useState('home');
     const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
     const [selectedPhoto, setSelectedPhoto] = useState<PhotoDetail | null>(null);
@@ -52,6 +53,15 @@ function MainApp() {
         setPhotoToEdit(photo);       
         setIsDetailModalOpen(false); 
         setIsRightPanelOpen(true);   
+    };
+
+    const handleLogout = () => {
+        // 모든 저장소 삭제
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // 강제 새로고침으로 완전히 초기화
+        window.location.href = '/login';
     };
 
     return (
@@ -127,13 +137,29 @@ function MainApp() {
 }
 
 export default function App() {
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const token = localStorage.getItem('accessToken');
+        setIsLoggedIn(!!token);
+        setIsLoading(false);
+    }, []);
+
+    if (isLoading) {
+        return <div>로딩 중...</div>;
+    }
+
     return (
         <BrowserRouter>
             <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/oauth/google/callback" element={<OAuthGoogleCallbackPage />} />
-                <Route path="/" element={<MainApp />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route 
+                    path="/" 
+                    element={isLoggedIn ? <MainApp /> : <Navigate to="/login" replace />} 
+                />
+                <Route path="*" element={<Navigate to={isLoggedIn ? "/" : "/login"} replace />} />
             </Routes>
         </BrowserRouter>
     );

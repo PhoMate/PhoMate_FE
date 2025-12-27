@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Photo, FeedResponse } from '../types';
-import { fetchFeedPhotos } from '../api/photos';
+import type { PostListParams, PostListResponse } from '../types/post';
+import { fetchPosts } from '../api/posts';
 import FeedGrid from './FeedGrid';
 import '../styles/FeedPage.css';
 
@@ -10,42 +11,56 @@ type FeedPageProps = {
 };
 
 export default function FeedPage({ onPhotoSelect, isPanelOpen = true }: FeedPageProps) {
+    const PAGE_SIZE = 12;
     const [photos, setPhotos] = useState<Photo[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [cursor, setCursor] = useState<string | undefined>();
+    const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const observerTarget = useRef<HTMLDivElement | null>(null);
 
+    const loadingRef = useRef(false);
+    const hasMoreRef = useRef(true);
+
     // 초기 로드
     useEffect(() => {
-        loadPhotos();
+        loadPhotos(1);
     }, []);
 
-    const loadPhotos = useCallback(async (nextCursor?: string) => {
-        if (isLoading || !hasMore) return;
+    const loadPhotos = useCallback(async (pageToLoad: number) => {
+        if (loadingRef.current || !hasMoreRef.current) return;
 
+        loadingRef.current = true;
         setIsLoading(true);
         setError(null);
 
         try {
-            const response: FeedResponse = await fetchFeedPhotos(nextCursor, 12);
-            setPhotos(prev => (nextCursor ? [...prev, ...response.photos] : response.photos));
-            setCursor(response.nextCursor);
-            setHasMore(response.hasMore);
+            const response = await fetchPosts({ page: pageToLoad, size: PAGE_SIZE } as PostListParams) as unknown as PostListResponse;
+            const chunk = (response as any).items ?? []; // items 기반 리스트
+            const total = (response as any).total ?? 0;
+
+            setPhotos(prev => (pageToLoad === 1 ? chunk : [...prev, ...chunk]));
+
+            const loadedCount = pageToLoad * PAGE_SIZE;
+            const newHasMore = chunk.length > 0 && loadedCount < total;
+            setHasMore(newHasMore);
+            hasMoreRef.current = newHasMore;
+
+            setPage(pageToLoad + 1);
         } catch (err) {
             setError(err instanceof Error ? err.message : '알 수 없는 오류');
         } finally {
+            loadingRef.current = false;
             setIsLoading(false);
         }
-    }, [isLoading, hasMore]);
+    }, [PAGE_SIZE]);
 
     // Intersection Observer로 무한 스크롤
     useEffect(() => {
         const observer = new IntersectionObserver(
             entries => {
-                if (entries[0].isIntersecting && hasMore && !isLoading) {
-                    loadPhotos(cursor);
+                if (entries[0].isIntersecting && hasMoreRef.current && !loadingRef.current) {
+                    loadPhotos(page);
                 }
             },
             { threshold: 0.1 }
@@ -56,7 +71,7 @@ export default function FeedPage({ onPhotoSelect, isPanelOpen = true }: FeedPage
         }
 
         return () => observer.disconnect();
-    }, [loadPhotos, cursor, hasMore, isLoading]);
+    }, [loadPhotos, page]);
 
     const handlePhotoClick = (photo: Photo) => {
         onPhotoSelect?.(photo);
@@ -71,7 +86,7 @@ export default function FeedPage({ onPhotoSelect, isPanelOpen = true }: FeedPage
             {error && (
                 <div className="feed-error">
                     <p>{error}</p>
-                    <button onClick={() => loadPhotos()} className="retry-btn">
+                    <button onClick={() => loadPhotos(1)} className="retry-btn">
                         다시 시도
                     </button>
                 </div>

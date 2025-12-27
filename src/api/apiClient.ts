@@ -56,7 +56,7 @@ async function apiRequest(
   }
 
   if (response.status === 204) {
-      return response;
+    return response;
   }
 
   if (!response.ok) {
@@ -116,4 +116,61 @@ export async function publicGet<T>(endpoint: string): Promise<T> {
   }
 
   return response.json();
+}
+
+// ============ SSE 스트리밍 (공용) ============
+
+export function createSSEStream(
+  endpoint: string,
+  payload?: any,
+  handlers?: {
+    onData?: (data: any) => void;
+    onError?: (error: string) => void;
+    onComplete?: () => void;
+  }
+): () => void {
+  const token = getAccessToken() || '';
+  const controller = new AbortController();
+
+  fetch(`${API_BASE}${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: payload ? JSON.stringify(payload) : undefined,
+    signal: controller.signal,
+  })
+    .then(async (res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      if (!reader) throw new Error('No readable stream');
+
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.trim() || !line.startsWith('data: ')) continue;
+          try {
+            const data = JSON.parse(line.slice(6).trim());
+            handlers?.onData?.(data);
+          } catch (e) {
+            console.error('SSE parse error', e);
+          }
+        }
+      }
+      handlers?.onComplete?.();
+    })
+    .catch((e) => {
+      if (e.name !== 'AbortError') handlers?.onError?.(String(e.message || e));
+    });
+
+  return () => controller.abort();
 }

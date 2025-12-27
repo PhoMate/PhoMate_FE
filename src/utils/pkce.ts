@@ -44,23 +44,16 @@ export async function generateCodeChallenge(codeVerifier: string): Promise<strin
   return base64UrlEncode(hashed);
 }
 
-/**
- * sessionStorage에 verifier 저장
- */
-export function savePkceVerifier(verifier: string): void {
-  sessionStorage.setItem("pkce_verifier", verifier);
+export const PKCE_VERIFIER_KEY = 'pkce_verifier';
+
+export function savePkceVerifier(verifier: string) {
+  sessionStorage.setItem(PKCE_VERIFIER_KEY, verifier);
 }
 
-/**
- * sessionStorage에서 verifier 불러오기
- */
-export function getPkceVerifier(): string | null {
-  return sessionStorage.getItem("pkce_verifier");
+export function loadPkceVerifier(): string | null {
+  return sessionStorage.getItem(PKCE_VERIFIER_KEY);
 }
 
-/**
- * sessionStorage에서 verifier 삭제
- */
-export function clearPkceVerifier(): void {
-  sessionStorage.removeItem("pkce_verifier");
+export function clearPkceVerifier() {
+  sessionStorage.removeItem(PKCE_VERIFIER_KEY);
 }

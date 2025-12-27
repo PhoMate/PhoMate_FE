@@ -4,9 +4,10 @@ import '../styles/Sidebar.css';
 type SidebarProps = {
 	activeNav?: string;
 	onNavClick?: (item: string) => void;
+	onLogout?: () => void;
 };
 
-export default function Sidebar({ activeNav = 'home', onNavClick }: SidebarProps) {
+export default function Sidebar({ activeNav = 'home', onNavClick, onLogout }: SidebarProps) {
 	const navItems = [
 		{ id: 'home', label: 'HOME', icon: '🏠' },
 		{ id: 'upload', label: 'UPLOAD', icon: '📤' },
@@ -28,6 +29,9 @@ export default function Sidebar({ activeNav = 'home', onNavClick }: SidebarProps
 					</li>
 				))}
 			</ul>
+			<button className="logout-btn" onClick={onLogout}>
+				로그아웃
+			</button>
 		</nav>
 	);
 }

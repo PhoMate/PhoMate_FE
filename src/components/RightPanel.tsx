@@ -187,52 +187,55 @@ export default function RightPanel({ isOpen, onClose, selectedPhoto, onUpdatePho
         const botMessageId = crypto.randomUUID();
         setMessages(prev => [...prev, { id: botMessageId, role: 'bot', content: '', streaming: true, type: 'text' }]);
 
+        let fullText = '';
+        let abort: (() => void) | undefined;
+        const timeoutId = window.setTimeout(() => {
+            abort?.();
+            setIsStreaming(false);
+        }, 30000);
+
         try {
             let newSessionId = chatSessionId;
-            
-            // 첫 메시지일 때만 세션 생성
             if (!chatSessionId) {
                 const res = await startChatSession({ message: '' });
-                newSessionId = res.sessionId;
-                setChatSessionId(res.sessionId);
+                newSessionId = String(res.sessionId);
+                setChatSessionId(newSessionId);
             }
 
-            if (newSessionId) {
-                // 스트리밍으로 메시지 전송
-                let fullText = '';
-                streamChatSearch(
-                    { sessionId: newSessionId, message: text },
-                    {
-                        onDelta: (delta) => {
-                            fullText += delta;
-                            setMessages(prev => prev.map(m => 
-                                m.id === botMessageId 
-                                    ? { ...m, content: fullText, streaming: true } 
-                                    : m
-                            ));
-                        },
-                        onResult: (result) => console.log(result),
-                        onError: (err) => {
-                            console.error('Stream error:', err);
-                            setIsStreaming(false);
-                        },
-                        onComplete: () => {
-                            setMessages(prev => prev.map(m => 
-                                m.id === botMessageId 
-                                    ? { ...m, streaming: false } 
-                                    : m
-                            ));
-                            setIsStreaming(false);
-                        }
+            if (!newSessionId) throw new Error('세션 생성 실패');
+
+            abort = streamChatSearch(
+                { sessionId: String(newSessionId), query: text },
+                {
+                    onDelta: (delta) => {
+                        fullText += delta;
+                        setMessages(prev => prev.map(m =>
+                            m.id === botMessageId ? { ...m, content: fullText, streaming: true } : m
+                        ));
+                    },
+                    onResult: (result) => {
+                        console.log('Search result:', result);
+                    },
+                    onError: (err) => {
+                        clearTimeout(timeoutId);
+                        setMessages(prev => prev.map(m =>
+                            m.id === botMessageId ? { ...m, streaming: false, content: '오류: ' + err } : m
+                        ));
+                        setIsStreaming(false);
+                    },
+                    onComplete: () => {
+                        clearTimeout(timeoutId);
+                        setMessages(prev => prev.map(m =>
+                            m.id === botMessageId ? { ...m, streaming: false } : m
+                        ));
+                        setIsStreaming(false);
                     }
-                );
-            }
+                }
+            );
         } catch (err) {
-            console.error('Search message error:', err);
-            setMessages(prev => prev.map(m => 
-                m.id === botMessageId 
-                    ? { ...m, content: '오류가 발생했습니다.', streaming: false } 
-                    : m
+            clearTimeout(timeoutId);
+            setMessages(prev => prev.map(m =>
+                m.id === botMessageId ? { ...m, streaming: false, content: '오류 발생' } : m
             ));
             setIsStreaming(false);
         }

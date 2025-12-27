@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Heart, Wand2, Search, Save } from 'lucide-react';
 import { PhotoDetail } from '../types';
-import { togglePhotoLike, savePhoto } from '../api/photos';
+import { togglePostLike } from '../api/posts';
 import '../styles/PhotoDetailModal.css';
 
 type PhotoDetailModalProps = {
@@ -24,20 +24,22 @@ export default function PhotoDetailModal({
     const [isLiked, setIsLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(photo?.likeCount || 0);
 
+    useEffect(() => {
+        setIsLiked(false);
+        setLikeCount(photo?.likeCount || 0);
+    }, [photo]);
+
     if (!isOpen || !photo) return null;
 
     const handleLike = async () => {
         if (!photo) return;
-        // API가 준비되면 서버 연동
-        if (currentMemberId) {
-            try {
-                const res = await togglePhotoLike(currentMemberId, photo.id);
-                setIsLiked(res.liked);
-                setLikeCount(res.likeCount);
-                return;
-            } catch {
-                // 실패 시 로컬 토글로 폴백
-            }
+        try {
+            const res = await togglePostLike(Number(photo.id));
+            setIsLiked(res.liked);
+            setLikeCount(res.likeCount);
+            return;
+        } catch {
+            // 실패 시 로컬 토글로 폴백
         }
         setIsLiked(!isLiked);
         setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
@@ -45,21 +47,6 @@ export default function PhotoDetailModal({
 
     const handleSave = async () => {
         if (!photo) return;
-
-        // 서버 저장 우선 (memberId가 있으면)
-        if (currentMemberId) {
-            try {
-                await savePhoto(currentMemberId, {
-                    originalUrl: photo.originalUrl,
-                    thumbnailUrl: photo.thumbnailUrl,
-                    title: photo.title,
-                });
-                alert('사진이 저장되었습니다.');
-                return;
-            } catch (e) {
-                // 서버 실패 시 로컬 다운로드로 폴백
-            }
-        }
 
         // 로컬 다운로드 폴백
         try {

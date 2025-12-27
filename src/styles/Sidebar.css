@@ -50,3 +50,20 @@
 .nav-item span:first-of-type {
   font-size: 18px;
 }
+
+.logout-btn {
+  width: 100%;
+  padding: 10px;
+  margin-top: auto;
+  background-color: #ff6b6b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.logout-btn:hover {
+  background-color: #ee5a52;
+}

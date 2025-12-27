@@ -9,12 +9,12 @@ type FeedGridProps = {
     onPhotoClick?: (photo: Photo) => void;
 };
 
-export default function FeedGrid({ photos, isLoading, onPhotoClick }: FeedGridProps) {
+export default function FeedGrid({ photos = [], isLoading, onPhotoClick }: FeedGridProps) {
     return (
         <div className="feed-grid">
-            {photos.map(photo => (
+            {photos.map((photo, idx) => (
                 <PhotoCard
-                    key={photo.id}
+                    key={photo.id ?? `${photo.title ?? 'photo'}-${idx}`}
                     photo={photo}
                     onClick={onPhotoClick}
                 />
