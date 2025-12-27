@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import LoginPage from './components/LoginPage';
+import OAuthGoogleCallbackPage from './pages/OAuthGoogleCallbackPage';
 import Sidebar from './components/Sidebar';
 import RightPanel from './components/RightPanel';
 import FeedPage from './components/FeedPage';
@@ -9,7 +12,7 @@ import UploadPage from './components/UploadPage';
 import { Photo, PhotoDetail } from './types';
 import './App.css';
 
-export default function App() {
+function MainApp() {
     const [activeNav, setActiveNav] = useState('home');
     const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
     const [selectedPhoto, setSelectedPhoto] = useState<PhotoDetail | null>(null);
@@ -120,5 +123,18 @@ export default function App() {
                 onAiSearch={() => setIsRightPanelOpen(true)}
             />
         </div>
+    );
+}
+
+export default function App() {
+    return (
+        <BrowserRouter>
+            <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/oauth/google/callback" element={<OAuthGoogleCallbackPage />} />
+                <Route path="/" element={<MainApp />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+        </BrowserRouter>
     );
 }

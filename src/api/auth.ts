@@ -73,3 +73,7 @@ export async function logout(): Promise<void> {
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('memberId');
 }
+
+export function getAccessToken() {
+  return localStorage.getItem('accessToken') || '';
+}
