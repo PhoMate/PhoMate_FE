@@ -8,10 +8,9 @@ export type Photo = {
 };
 
 export interface PhotoDetail extends Photo {
-  tags: string[];
-  description: string;
-  aiGenerated: boolean;
-  uploadedAt: string;
+  description?: string;
+  uploadedBy?: string;   // 추가
+  uploadedAt?: string;   // 추가
 }
 
 export type FeedResponse = {
