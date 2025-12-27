@@ -1,27 +1,29 @@
 import React, { useState, useRef } from 'react';
-import { ImagePlus, X, Upload } from 'lucide-react'; 
+import { ImagePlus, X } from 'lucide-react';
+import { post } from '../api/apiClient';
 import '../styles/UploadPage.css';
 
-export default function UploadPage() {
+type UploadPageProps = {
+    onUploadSuccess: () => void;
+};
+
+export default function UploadPage({ onUploadSuccess }: UploadPageProps) {
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [hashtags, setHashtags] = useState('');
-    
-    const today = new Date().toISOString().slice(2, 10).replace(/-/g, '/');
     
     const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    const today = new Date().toISOString().slice(2, 10).replace(/-/g, '/');
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             const url = URL.createObjectURL(file);
             setPreviewUrl(url);
+            setSelectedFile(file);
         }
-    };
-
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
     };
 
     const handleDrop = (e: React.DragEvent) => {
@@ -30,32 +32,38 @@ export default function UploadPage() {
         if (file && file.type.startsWith('image/')) {
             const url = URL.createObjectURL(file);
             setPreviewUrl(url);
+            setSelectedFile(file);
         }
     };
 
-    const handleSubmit = () => {
-        if (!previewUrl) return alert("사진을 업로드해주세요!");
+    const handleSubmit = async () => {
+        if (!selectedFile) return alert("사진을 업로드해주세요!");
         if (!title) return alert("제목을 입력해주세요!");
 
-        const uploadData = {
-            image: previewUrl,
-            title,
-            date: today,
-            description,
-            hashtags: hashtags.split(' ').filter(tag => tag.startsWith('#'))
-        };
+        try {
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('description', description);
+            formData.append('image', selectedFile);
 
-        console.log("업로드 데이터:", uploadData);
-        alert("업로드 완료! (콘솔 확인)");
+            await post('/api/posts', formData);
+            
+            alert("게시글이 성공적으로 등록되었습니다!");
+            
+            onUploadSuccess(); 
+            
+        } catch (error) {
+            console.error("업로드 실패:", error);
+            alert("업로드 중 오류가 발생했습니다.");
+        }
     };
 
     return (
         <main className="upload-page">
             <div className="upload-container">
-
                 <section 
                     className={`upload-left ${previewUrl ? 'has-image' : ''}`}
-                    onDragOver={handleDragOver}
+                    onDragOver={(e) => e.preventDefault()}
                     onDrop={handleDrop}
                     onClick={() => !previewUrl && fileInputRef.current?.click()}
                 >
@@ -63,7 +71,7 @@ export default function UploadPage() {
                         type="file" 
                         ref={fileInputRef} 
                         onChange={handleFileChange} 
-                        accept="image/*" 
+                        accept="image/png, image/jpeg, image/jpg"
                         hidden 
                     />
 
@@ -75,6 +83,7 @@ export default function UploadPage() {
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setPreviewUrl(null);
+                                    setSelectedFile(null);
                                 }}
                             >
                                 <X size={20} />
@@ -86,7 +95,7 @@ export default function UploadPage() {
                                 <ImagePlus size={40} color="#aaa" />
                             </div>
                             <span className="upload-text">사진 업로드</span>
-                            <span className="upload-subtext">클릭하거나 파일을 드래그하세요</span>
+                            <span className="upload-subtext">JPG, PNG 파일 지원</span>
                         </div>
                     )}
                 </section>
@@ -111,7 +120,7 @@ export default function UploadPage() {
                             onChange={(e) => setDescription(e.target.value)}
                         />
                     </div>
-
+                    
                     <div className="form-actions">
                         <button className="submit-btn" onClick={handleSubmit}>
                             업로드

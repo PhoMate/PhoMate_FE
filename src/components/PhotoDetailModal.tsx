@@ -10,7 +10,7 @@ type PhotoDetailModalProps = {
     onClose: () => void;
     onAiEdit?: (photo: PhotoDetail) => void;
     onAiSearch?: (photo: PhotoDetail) => void;
-    currentMemberId?: string; // 추가
+    currentMemberId?: string; 
 };
 
 export default function PhotoDetailModal({
