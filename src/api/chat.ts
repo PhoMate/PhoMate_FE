@@ -1,7 +1,7 @@
 import { StartSessionRequest, StartSessionResponse, StreamSearchRequest, ChatEvent } from '../types/chat';
 import * as apiClient from './apiClient';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 /**
  * 첫 채팅: 세션 생성
@@ -28,7 +28,7 @@ export function streamChatSearch(
   const token = localStorage.getItem('accessToken') || '';
   const controller = new AbortController();
 
-  fetch(`${API_BASE}/api/chat/search/stream`, {
+  fetch(`${API_BASE_URL}/api/chat/search/stream`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -73,4 +73,13 @@ export function streamChatSearch(
     });
 
   return () => controller.abort();
+}
+
+// 채팅 메시지 편집 저장
+export async function sendChatEdit(payload: {
+  chatSessionId: number;
+  editSessionId: number;
+  userText: string;
+}) {
+  return apiClient.post('/api/chat/send-edit', payload);
 }
