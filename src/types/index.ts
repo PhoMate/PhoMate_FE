@@ -7,11 +7,12 @@ export type Photo = {
     createdAt: string;
 };
 
-export interface PhotoDetail extends Photo {
-  description?: string;
-  uploadedBy?: string;
-  authorId?: number;
-}
+export type PhotoDetail = Photo & {
+    description?: string;
+    uploadedBy?: string;
+    uploadedAt?: string;
+    authorId?: number;
+};
 
 export type FeedResponse = {
     photos: Photo[];

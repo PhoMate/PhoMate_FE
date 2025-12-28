@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { startChatSession, streamChatSearch } from '../../api/chat';
-import { Message, MessageItem } from './MessageItem';
+import MessageItem, { Message } from './MessageItem';
 
 type SearchTabProps = {
     isGuest: boolean;
