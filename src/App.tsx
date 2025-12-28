@@ -74,15 +74,15 @@ function MainApp({ isGuest }: MainAppProps) {
         window.location.href = '/login';
     };
 
+    const handleLoginRedirect = () => {
+        navigate('/login');
+    };
+
     useEffect(() => {
         if (isGuest && activeNav !== 'home') {
             setActiveNav('home');
         }
     }, [isGuest, activeNav]);
-
-    const handleLoginRedirect = () => {
-        navigate('/login');
-    };
 
     return (
         <div className="app-container">
@@ -196,19 +196,19 @@ export default function App() {
     }
 
     const isAuthenticated = isLoggedIn || isGuest;
-    console.log('🔑 isAuthenticated:', isAuthenticated, { isLoggedIn, isGuest });log('🔑 isAuthenticated:', isAuthenticated, { isLoggedIn, isGuest });
+    console.log('🔑 isAuthenticated:', isAuthenticated, { isLoggedIn, isGuest });
 
     return (
         <BrowserRouter>
             <Routes>
-                <Route path="/login" element={<LoginPage />} />gin" element={<LoginPage />} />
-                <Route path="/oauth/google/callback" element={<OAuthGoogleCallbackPage />} />      <Route path="/oauth/google/callback" element={<OAuthGoogleCallbackPage />} />
-                <Route                 <Route 
-                    path="/" path="/" 
-                    element={isAuthenticated ? <MainApp isGuest={isGuest} /> : <Navigate to="/login" replace />}                     element={isAuthenticated ? <MainApp isGuest={isGuest} /> : <Navigate to="/login" replace />} 
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/oauth/google/callback" element={<OAuthGoogleCallbackPage />} />
+                <Route 
+                    path="/" 
+                    element={isAuthenticated ? <MainApp isGuest={isGuest} /> : <Navigate to="/login" replace />} 
                 />
-                <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />} />{isAuthenticated ? "/" : "/login"} replace />} />
+                <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />} />
             </Routes>
-        </BrowserRouter> </BrowserRouter>
+        </BrowserRouter>
     );
 }

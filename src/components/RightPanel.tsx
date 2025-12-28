@@ -55,7 +55,9 @@ const MessageItem = ({ msg }: { msg: Message }) => {
     );
 };
 
+// --- Main Component ---
 export default function RightPanel({ isOpen, onClose, isGuest = false, selectedPhoto, onUpdatePhoto }: RightPanelProps) {
+    // 1. UI State
     const [activeTab, setActiveTab] = useState<TabType>('search');
     const [inputMessage, setInputMessage] = useState('');
     const panelClass = `right-panel ${isOpen ? 'open' : 'closed'}`;
@@ -158,6 +160,7 @@ export default function RightPanel({ isOpen, onClose, isGuest = false, selectedP
     };
 
     const processSearchMessage = async (text: string) => {
+        // 게스트 또는 토큰 없음 → 로그인 필요 안내 후 반환
         const token = localStorage.getItem('accessToken');
         if (isGuest || !token) {
             setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'bot', content: '로그인 후 사용할 수 있습니다.', streaming: false, type: 'text' }]);
@@ -257,7 +260,7 @@ export default function RightPanel({ isOpen, onClose, isGuest = false, selectedP
         } catch (err) {
             clearTimeout(timeoutId);
             console.error('Error in processSearchMessage:', err);
-            setMessages(prev => prev.map m =>
+            setMessages(prev => prev.map(m =>
                 m.id === botMessageId ? { 
                     ...m, 
                     streaming: false, 
