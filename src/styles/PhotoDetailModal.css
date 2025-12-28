@@ -219,12 +219,12 @@
 }
 
 .ai-edit-btn {
-    background: #FFD54F;
+    background: #e495e4;
     color: #fff;
 }
 
 .ai-edit-btn:hover {
-    background: #FBC02D;
+    background: #e495e4;
     transform: translateY(-2px);
 }
 

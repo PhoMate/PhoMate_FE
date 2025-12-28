@@ -10,7 +10,7 @@ import ProfilePage from './components/ProfilePage';
 import FollowPage, { FollowUser } from './components/FollowPage';
 import UploadPage from './components/UploadPage';
 import { Photo, PhotoDetail } from './types';
-import { fetchPostDetail } from './api/posts';
+import { fetchPostDetail, updatePost, deletePost } from './api/posts';
 import { getMemberInfo } from './api/members';
 import './App.css';
 
@@ -24,51 +24,41 @@ function MainApp({ isGuest }: MainAppProps) {
     const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
     const [selectedPhoto, setSelectedPhoto] = useState<PhotoDetail | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-    
     const [targetUser, setTargetUser] = useState<FollowUser | null>(null);
-    
     const [photoToEdit, setPhotoToEdit] = useState<PhotoDetail | null>(null);
+    const [editingPost, setEditingPost] = useState<PhotoDetail | null>(null);
 
     const handleNavClick = (nav: string) => {
         if (isGuest && nav !== 'home') {
             alert('로그인 후 이용 가능한 기능입니다.');
             return;
         }
+        setEditingPost(null);
         setActiveNav(nav);
     };
 
     const handleGoToFollow = () => handleNavClick('follow');
     const handleBackToProfile = () => handleNavClick('profile');
-    const handleBackToFollowList = () => {
-        handleNavClick('follow');
-    };
+    const handleBackToFollowList = () => handleNavClick('follow');
 
     const handleUserClick = (user: FollowUser) => {
-        setTargetUser(user); 
+        setTargetUser(user);
         setActiveNav('user_profile');
     };
 
     const handleAuthorClick = async (authorId: number) => {
-        console.log('handleAuthorClick called with authorId:', authorId);
         try {
-            console.log('Fetching member info for:', authorId);
             const memberInfo = await getMemberInfo(authorId);
-            console.log('Member info retrieved:', memberInfo);
-            
             const newTargetUser: FollowUser = {
                 id: String(authorId),
                 name: memberInfo.nickname,
                 profileUrl: memberInfo.profileImageUrl,
                 isFollowed: false,
             };
-            console.log('Setting target user:', newTargetUser);
-            
-            // 상태 업데이트
             setIsDetailModalOpen(false);
             setTargetUser(newTargetUser);
             setActiveNav('user_profile');
         } catch (error) {
-            console.error('사용자 정보 조회 실패:', error);
             const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
             alert(`프로필을 불러올 수 없습니다: ${errorMessage}`);
         }
@@ -76,7 +66,6 @@ function MainApp({ isGuest }: MainAppProps) {
 
     const handlePhotoSelect = async (photo: Photo) => {
         try {
-            // 상세 조회 API 호출
             const detail = await fetchPostDetail(Number(photo.id));
             setSelectedPhoto({
                 ...photo,
@@ -87,8 +76,6 @@ function MainApp({ isGuest }: MainAppProps) {
             });
             setIsDetailModalOpen(true);
         } catch (error) {
-            console.error('게시글 상세 조회 실패:', error);
-            // 실패 시 기본 데이터로 표시
             setSelectedPhoto({
                 ...photo,
                 description: '',
@@ -99,16 +86,35 @@ function MainApp({ isGuest }: MainAppProps) {
         }
     };
 
-    const handleUploadSuccess = () => setActiveNav('home');
+    const handleUploadSuccess = () => {
+        setEditingPost(null);
+        setActiveNav('home');
+    };
 
     const handleAiEditRequest = (photo: PhotoDetail) => {
         if (isGuest) {
             alert('로그인 후 AI 편집 기능을 사용할 수 있습니다.');
             return;
         }
-        setPhotoToEdit(photo);       
-        setIsDetailModalOpen(false); 
-        setIsRightPanelOpen(true);   
+        setPhotoToEdit(photo);
+        setIsDetailModalOpen(false);
+        setIsRightPanelOpen(true);
+    };
+
+    const handleEditRequest = (photo: PhotoDetail) => {
+        setEditingPost(photo);
+        setActiveNav('upload');
+    };
+
+    const handleDeletePhoto = async (photoId: number) => {
+        if (!window.confirm("정말 삭제하시겠습니까?")) return;
+        try {
+            await deletePost(photoId);
+            alert("삭제되었습니다.");
+            window.location.reload();
+        } catch (error) {
+            alert("삭제 실패했습니다.");
+        }
     };
 
     const handleLogout = () => {
@@ -117,7 +123,6 @@ function MainApp({ isGuest }: MainAppProps) {
         window.location.href = '/login';
     };
 
-    // 게스트는 홈 외 이동을 막기 위한 안전장치
     useEffect(() => {
         if (isGuest && activeNav !== 'home') {
             setActiveNav('home');
@@ -146,7 +151,10 @@ function MainApp({ isGuest }: MainAppProps) {
             )}
 
             {activeNav === 'upload' && !isGuest && (
-                <UploadPage onUploadSuccess={handleUploadSuccess} />
+                <UploadPage 
+                    onUploadSuccess={handleUploadSuccess} 
+                    editData={editingPost}
+                />
             )}
 
             {activeNav === 'profile' && !isGuest && (
@@ -154,7 +162,9 @@ function MainApp({ isGuest }: MainAppProps) {
                     isMe={true} 
                     onPhotoSelect={handlePhotoSelect} 
                     onFollowClick={handleGoToFollow}
-                    isPanelOpen={isRightPanelOpen} 
+                    isPanelOpen={isRightPanelOpen}
+                    onEditClick={handleEditRequest}
+                    onDeleteClick={(p: Photo) => handleDeletePhoto(Number(p.id))}
                 />
             )}
 

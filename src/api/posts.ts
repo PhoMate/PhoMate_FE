@@ -16,7 +16,6 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const getToken = () => {
   let token = localStorage.getItem('accessToken');
   if (token) {
-    // JSON.stringify로 저장된 경우 따옴표가 붙을 수 있어 이를 제거합니다.
     if (token.startsWith('"') && token.endsWith('"')) {
       token = token.slice(1, -1);
     }
@@ -82,7 +81,6 @@ export async function createPost(payload: PostCreateRequestDTO, imageFile: File)
   if (!token) throw new Error("401_NO_TOKEN");
 
   const formData = new FormData();
-  
   formData.append('title', payload.title);
   formData.append('description', payload.description || '');
   formData.append('image', imageFile);
@@ -106,34 +104,88 @@ export async function createPost(payload: PostCreateRequestDTO, imageFile: File)
   const text = await res.text();
   if (!text) {
     console.log("✅ 서버 응답이 비어있으나 성공으로 간주합니다.");
-    return { postId: 0 }; // 혹은 { postId: 0 } 등 기본값
+    return { postId: 0 };
   }
 
-  return res.json();
+  return JSON.parse(text);
 }
 
+/**
+ * 4. 게시글 수정 (Multipart/form-data)
+ * PATCH /api/posts/{postId}
+ */
 export async function updatePost(postId: number, payload: PostCreateRequestDTO, imageFile?: File): Promise<void> {
+  const token = getToken();
+  if (!token) throw new Error("401_NO_TOKEN");
+
   const formData = new FormData();
+  
+  // 제목과 설명 추가 (명세: 안 보내거나 ""이면 수정되지 않음)
   formData.append('title', payload.title);
   formData.append('description', payload.description || '');
-  if (imageFile) formData.append('image', imageFile);
+  
+  // 이미지를 새로 첨부한 경우에만 추가
+  if (imageFile) {
+    formData.append('image', imageFile);
+  }
+
+  console.log(`🚀 게시글 ${postId} 수정 요청 전송 중...`);
 
   const res = await fetch(`${API_BASE_URL}/api/posts/${postId}`, {
     method: 'PATCH',
-    headers: { ...getAuthHeaders() } as HeadersInit,
+    headers: { 
+      ...getAuthHeaders() 
+    } as HeadersInit,
     body: formData,
   });
-  if (!res.ok) throw new Error('게시글 수정 실패');
+
+  if (!res.ok) {
+    if (res.status === 401) throw new Error("401");
+    const errorText = await res.text();
+    throw new Error(`게시글 수정 실패: ${res.status} - ${errorText}`);
+  }
+  
+  // 204 No Content인 경우 별도의 반환값 없음
 }
 
+/**
+ * 5. 게시글 삭제
+ * DELETE /api/posts/{postId}
+ */
 export async function deletePost(postId: number): Promise<void> {
+  let token = localStorage.getItem('accessToken');
+  if (token) token = token.replace(/"/g, ''); 
+
+  if (!token) throw new Error("401_NO_TOKEN");
+
+  console.log(`🚀 게시글 ${postId} 삭제 요청 중...`);
+
   const res = await fetch(`${API_BASE_URL}/api/posts/${postId}`, {
     method: 'DELETE',
-    headers: { ...getAuthHeaders() } as HeadersInit,
+    headers: { 
+      'Authorization': `Bearer ${token}`,
+      // 500 에러 시 서버가 JSON 형태의 에러 메시지를 잘 줄 수 있도록 추가
+      'Accept': 'application/json'
+    } as HeadersInit,
   });
-  if (!res.ok) throw new Error('게시글 삭제 실패');
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error(`❌ 서버 내부 에러 (500):`, errorText);
+    
+    // 에러 객체를 분석해서 사용자에게 더 친절하게 알림
+    try {
+      const errorJson = JSON.parse(errorText);
+      throw new Error(errorJson.message || `서버 에러: ${res.status}`);
+    } catch (e) {
+      throw new Error(`서버 응답 오류: ${res.status}`);
+    }
+  }
 }
 
+/**
+ * 6. 좋아요 토글
+ */
 export async function togglePostLike(postId: number): Promise<LikesToggleResponseDTO> {
   const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/likes`, {
     method: 'POST',
@@ -143,6 +195,9 @@ export async function togglePostLike(postId: number): Promise<LikesToggleRespons
   return res.json();
 }
 
+/**
+ * 7. 특정 회원 사진 조회
+ */
 export async function getMemberPhotos(memberId: string): Promise<PostFeedResponseDTO> {
   return fetchPosts({ memberId } as any);
 }
