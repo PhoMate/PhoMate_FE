@@ -9,8 +9,8 @@ export type Photo = {
 
 export interface PhotoDetail extends Photo {
   description?: string;
-  uploadedBy?: string;   // 추가
-  uploadedAt?: string;   // 추가
+  uploadedBy?: string;
+  authorId?: number;
 }
 
 export type FeedResponse = {

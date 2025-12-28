@@ -10,6 +10,8 @@ import ProfilePage from './components/ProfilePage';
 import FollowPage, { FollowUser } from './components/FollowPage';
 import UploadPage from './components/UploadPage';
 import { Photo, PhotoDetail } from './types';
+import { fetchPostDetail } from './api/posts';
+import { getMemberInfo } from './api/members';
 import './App.css';
 
 type MainAppProps = {
@@ -46,14 +48,55 @@ function MainApp({ isGuest }: MainAppProps) {
         setActiveNav('user_profile');
     };
 
-    const handlePhotoSelect = (photo: Photo) => {
-        setSelectedPhoto({
-            ...photo,
-            description: '상세 설명...',
-            uploadedBy: 'User',
-            uploadedAt: new Date().toISOString(),
-        });
-        setIsDetailModalOpen(true);
+    const handleAuthorClick = async (authorId: number) => {
+        console.log('handleAuthorClick called with authorId:', authorId);
+        try {
+            console.log('Fetching member info for:', authorId);
+            const memberInfo = await getMemberInfo(authorId);
+            console.log('Member info retrieved:', memberInfo);
+            
+            const newTargetUser: FollowUser = {
+                id: String(authorId),
+                name: memberInfo.nickname,
+                profileUrl: memberInfo.profileImageUrl,
+                isFollowed: false,
+            };
+            console.log('Setting target user:', newTargetUser);
+            
+            // 상태 업데이트
+            setIsDetailModalOpen(false);
+            setTargetUser(newTargetUser);
+            setActiveNav('user_profile');
+        } catch (error) {
+            console.error('사용자 정보 조회 실패:', error);
+            const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+            alert(`프로필을 불러올 수 없습니다: ${errorMessage}`);
+        }
+    };
+
+    const handlePhotoSelect = async (photo: Photo) => {
+        try {
+            // 상세 조회 API 호출
+            const detail = await fetchPostDetail(Number(photo.id));
+            setSelectedPhoto({
+                ...photo,
+                description: detail.description || '',
+                uploadedBy: detail.authorNickname,
+                authorId: detail.authorId,
+                createdAt: detail.createdAt,
+            });
+            setIsDetailModalOpen(true);
+        } catch (error) {
+            console.error('게시글 상세 조회 실패:', error);
+            // 실패 시 기본 데이터로 표시
+            setSelectedPhoto({
+                ...photo,
+                description: '',
+                uploadedBy: 'Unknown',
+                createdAt: new Date().toISOString(),
+            });
+            setIsDetailModalOpen(true);
+        }
     };
 
     const handleUploadSuccess = () => setActiveNav('home');
@@ -160,6 +203,7 @@ function MainApp({ isGuest }: MainAppProps) {
                 onClose={() => setIsDetailModalOpen(false)}
                 onAiEdit={handleAiEditRequest}
                 onAiSearch={() => setIsRightPanelOpen(true)}
+                onAuthorClick={handleAuthorClick}
             />
         </div>
     );

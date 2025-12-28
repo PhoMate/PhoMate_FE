@@ -10,6 +10,7 @@ type PhotoDetailModalProps = {
     onClose: () => void;
     onAiEdit?: (photo: PhotoDetail) => void;
     onAiSearch?: (photo: PhotoDetail) => void;
+    onAuthorClick?: (authorId: number) => void;
     currentMemberId?: string; 
 };
 
@@ -19,6 +20,7 @@ export default function PhotoDetailModal({
     onClose,
     onAiEdit,
     onAiSearch,
+    onAuthorClick,
     currentMemberId,
 }: PhotoDetailModalProps) {
     const [isLiked, setIsLiked] = useState(false);
@@ -104,7 +106,12 @@ export default function PhotoDetailModal({
                             {photo.uploadedBy && (
                                 <div className="meta-item">
                                     <span className="meta-label">업로더:</span>
-                                    <span className="meta-value">{photo.uploadedBy}</span>
+                                    <button
+                                        className="meta-author-btn"
+                                        onClick={() => photo.authorId && onAuthorClick?.(photo.authorId)}
+                                    >
+                                        {photo.uploadedBy}
+                                    </button>
                                 </div>
                             )}
                             {photo.createdAt && (

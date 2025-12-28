@@ -161,6 +161,23 @@
     color: #333;
 }
 
+.meta-author-btn {
+    background: none;
+    border: none;
+    color: #0066cc;
+    cursor: pointer;
+    font-size: 13px;
+    text-decoration: none;
+    padding: 0;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.meta-author-btn:hover {
+    color: #0052a3;
+    text-decoration: underline;
+}
+
 .action-buttons {
     display: grid;
     grid-template-columns: 1fr 1fr;
