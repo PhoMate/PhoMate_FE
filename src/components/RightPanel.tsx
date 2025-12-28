@@ -192,10 +192,11 @@ export default function RightPanel({ isOpen, onClose, isGuest = false, selectedP
                 const res = await startChatSession();
                 console.log('Session created:', res);
                 
+                // API가 숫자를 직접 반환하는지, 객체로 반환하는지 확인
                 if (typeof res === 'number') {
                     newSessionId = res;
                 } else {
-                    newSessionId = res.sessionId || res.chatSessionId || res;
+                    newSessionId = res.chatSessionId;
                 }
                 setChatSessionId(newSessionId);
             }
@@ -256,7 +257,7 @@ export default function RightPanel({ isOpen, onClose, isGuest = false, selectedP
         } catch (err) {
             clearTimeout(timeoutId);
             console.error('Error in processSearchMessage:', err);
-            setMessages(prev => prev.map(m =>
+            setMessages(prev => prev.map m =>
                 m.id === botMessageId ? { 
                     ...m, 
                     streaming: false, 

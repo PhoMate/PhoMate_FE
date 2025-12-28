@@ -69,15 +69,11 @@ function MainApp({ isGuest }: MainAppProps) {
     };
 
     const handleLogout = () => {
-        // 모든 저장소 삭제
         localStorage.clear();
         sessionStorage.clear();
-        
-        // 강제 새로고침으로 완전히 초기화
         window.location.href = '/login';
     };
 
-    // 게스트는 홈 외 이동을 막기 위한 안전장치
     useEffect(() => {
         if (isGuest && activeNav !== 'home') {
             setActiveNav('home');
@@ -144,7 +140,7 @@ function MainApp({ isGuest }: MainAppProps) {
                 />
             )}
 
-             <RightPanel
+            <RightPanel
                 isOpen={isRightPanelOpen}
                 onClose={() => setIsRightPanelOpen(false)}
                 isGuest={isGuest}
@@ -191,7 +187,6 @@ export default function App() {
 
         checkAuth();
 
-        // 다른 탭/창에서 로그인했을 때 감지
         window.addEventListener('storage', checkAuth);
         return () => window.removeEventListener('storage', checkAuth);
     }, []);
@@ -201,19 +196,19 @@ export default function App() {
     }
 
     const isAuthenticated = isLoggedIn || isGuest;
-    console.log('🔑 isAuthenticated:', isAuthenticated, { isLoggedIn, isGuest });
+    console.log('🔑 isAuthenticated:', isAuthenticated, { isLoggedIn, isGuest });log('🔑 isAuthenticated:', isAuthenticated, { isLoggedIn, isGuest });
 
     return (
         <BrowserRouter>
             <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/oauth/google/callback" element={<OAuthGoogleCallbackPage />} />
-                <Route 
-                    path="/" 
-                    element={isAuthenticated ? <MainApp isGuest={isGuest} /> : <Navigate to="/login" replace />} 
+                <Route path="/login" element={<LoginPage />} />gin" element={<LoginPage />} />
+                <Route path="/oauth/google/callback" element={<OAuthGoogleCallbackPage />} />      <Route path="/oauth/google/callback" element={<OAuthGoogleCallbackPage />} />
+                <Route                 <Route 
+                    path="/" path="/" 
+                    element={isAuthenticated ? <MainApp isGuest={isGuest} /> : <Navigate to="/login" replace />}                     element={isAuthenticated ? <MainApp isGuest={isGuest} /> : <Navigate to="/login" replace />} 
                 />
-                <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />} />
+                <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />} />{isAuthenticated ? "/" : "/login"} replace />} />
             </Routes>
-        </BrowserRouter>
+        </BrowserRouter> </BrowserRouter>
     );
 }

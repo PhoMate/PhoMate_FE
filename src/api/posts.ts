@@ -72,6 +72,7 @@ export async function togglePostLike(postId: number): Promise<LikesToggleRespons
   if (!res.ok) throw new Error('게시글 좋아요 토글 실패');
   return res.json();
 }
+
 /**
  * 특정 회원의 사진 목록 조회
  * GET /api/posts?memberId={memberId}
@@ -79,3 +80,5 @@ export async function togglePostLike(postId: number): Promise<LikesToggleRespons
 export async function getMemberPhotos(memberId: string): Promise<PostFeedResponseDTO> {
   return fetchPosts({ memberId } as any);
 }
+
+// cursor 기반 목록: fetchPosts로 통일

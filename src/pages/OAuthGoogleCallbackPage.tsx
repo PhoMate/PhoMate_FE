@@ -51,25 +51,25 @@ export default function OAuthGoogleCallbackPage() {
         setIsLoading(false);
       }
     };
-    handleCallback();
+    handleCallback(););
   }, [navigate]);
 
-  if (isLoading) {
+  if (isLoading) {{
     return (
-      <div className="callback-loading">
-        <p>로그인 처리 중입니다...</p>
+      <div className="callback-loading">div className="callback-loading">
+        <p>로그인 처리 중입니다...</p>  <p>로그인 처리 중입니다...</p>
       </div>
     );
-  }
+  }  }
 
-  if (error) {
+  if (error) { {
     return (
-      <div className="callback-error">
-        <h2>로그인 실패</h2>
-        <p>{error}</p>
-        <button onClick={() => navigate('/login')}>
-          로그인 페이지로 돌아가기
-        </button>
+      <div className="callback-error">k-error">
+        <h2>로그인 실패</h2>로그인 실패</h2>
+        <p>{error}</p>  <p>{error}</p>
+        <button onClick={() => navigate('/login')}>     <button onClick={() => navigate('/login')}>
+          로그인 페이지로 돌아가기          로그인 페이지로 돌아가기
+        </button>on>
       </div>
     );
   }
