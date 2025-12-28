@@ -49,9 +49,39 @@ export async function googleLogin(params: GoogleLoginRequestDTO): Promise<Google
     const text = await res.text().catch(() => '');
     throw new Error(`Google 로그인 실패 (${res.status}) ${text || ''}`);
   }
+  // 응답 파싱 강화: JSON 우선, 빈 응답은 오류로 처리
+  const contentType = res.headers.get('content-type') || '';
+  try {
+    let payload: any = null;
+    if (contentType.includes('application/json')) {
+      payload = await res.json();
+    } else {
+      const text = await res.text();
+      payload = text ? JSON.parse(text) : null;
+    }
 
-  const text = await res.text();
-  return text ? JSON.parse(text) : null;
+    if (!payload) {
+      throw new Error('로그인 응답이 비어 있습니다.');
+    }
+
+    // 래핑된 형태 지원: { data: { memberId, accessToken, refreshToken } }
+    const data = payload.data?.accessToken ? payload.data : payload;
+    const result: GoogleLoginResponseDTO = {
+      memberId: Number(data.memberId),
+      accessToken: String(data.accessToken || ''),
+      refreshToken: String(data.refreshToken || ''),
+    };
+
+    if (!result.accessToken || !result.refreshToken) {
+      throw new Error('토큰이 응답에 없습니다.');
+    }
+
+    return result;
+  } catch (e: any) {
+    const msg = e?.message || String(e);
+    console.error('googleLogin parse error:', msg);
+    throw new Error(msg);
+  }
 }
 
 // ============ 토큰 관리 ============
@@ -99,7 +129,9 @@ export function logout(): void {
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('memberId');
-  sessionStorage.removeItem('pkce_code_verifier');
+  // PKCE verifier 키 정리
+  sessionStorage.removeItem('pkce_verifier');
+  sessionStorage.removeItem('pkce_code_verifier'); // 레거시 키도 함께 제거
 }
 
 /**

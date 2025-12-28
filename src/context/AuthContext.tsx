@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { cookieGet } from '../api/apiClient';
 
 interface AuthContextType {
   isLoggedIn: boolean;
@@ -22,8 +23,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (token && id) {
       setIsLoggedIn(true);
       setMemberId(id);
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    // 토큰이 없더라도 쿠키 기반 세션이 있으면 로그인 처리
+    cookieGet<{ memberId: number; nickname?: string }>(`/api/members/me`)
+      .then((me) => {
+        if (me && me.memberId) {
+          setIsLoggedIn(true);
+          setMemberId(String(me.memberId));
+          localStorage.setItem('memberId', String(me.memberId));
+        }
+      })
+      .catch(() => {
+        // 무시: 비로그인 상태
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const login = (id: string) => {

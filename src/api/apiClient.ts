@@ -28,6 +28,7 @@ async function apiRequest(
   let response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers,
+    credentials: 'include',
   });
 
   if (response.status === 401) {
@@ -108,6 +109,7 @@ export async function publicGet<T>(endpoint: string): Promise<T> {
     headers: {
       'Content-Type': 'application/json',
     },
+    credentials: 'include',
   });
 
   if (!response.ok) {
@@ -115,6 +117,20 @@ export async function publicGet<T>(endpoint: string): Promise<T> {
     throw new Error(errorData.message || `요청 실패: ${response.status}`);
   }
 
+  return response.json();
+}
+
+// 쿠키 기반 인증으로 GET (Authorization 헤더 없이, credentials 포함)
+export async function cookieGet<T>(endpoint: string): Promise<T> {
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `요청 실패: ${response.status}`);
+  }
   return response.json();
 }
 

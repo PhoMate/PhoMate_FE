@@ -39,6 +39,14 @@ export default function PhotoDetailModal({
             const res = await togglePostLike(Number(photo.id));
             setIsLiked(res.liked);
             setLikeCount(res.likeCount);
+            // FeedPage에 좋아요 업데이트 알림
+            window.dispatchEvent(new CustomEvent('phomate:like-updated', {
+                detail: {
+                    postId: Number(photo.id),
+                    likeCount: res.likeCount,
+                    liked: res.liked
+                }
+            }));
             return;
         } catch {
             // 실패 시 로컬 토글로 폴백

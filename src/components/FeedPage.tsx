@@ -97,6 +97,24 @@ export default function FeedPage({ onPhotoSelect, isPanelOpen = true }: FeedPage
         return () => window.removeEventListener('phomate:search-results', handler as EventListener);
     }, []);
 
+    // 좋아요 업데이트 수신: 메인 피드의 좋아요 숫자 즉시 업데이트
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const detail = (e as CustomEvent).detail || {};
+            const postId = detail.postId;
+            const likeCount = detail.likeCount;
+            
+            if (postId === undefined || likeCount === undefined) return;
+
+            setPhotos(prev => prev.map(photo =>
+                photo.id === String(postId) ? { ...photo, likeCount } : photo
+            ));
+        };
+
+        window.addEventListener('phomate:like-updated', handler as EventListener);
+        return () => window.removeEventListener('phomate:like-updated', handler as EventListener);
+    }, []);
+
     // Intersection Observer로 무한 스크롤
     useEffect(() => {
         const observer = new IntersectionObserver(

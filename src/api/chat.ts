@@ -28,6 +28,55 @@ export async function startChatSession(): Promise<StartSessionResponse> {
  * POST /api/chat/search/stream
  * delta/result 분리 처리
  */
+function drainSSEBuffer(buffer: string): { messages: Array<{ event: string; data: string }>; rest: string } {
+  const parts = buffer.split('\n\n');
+  const rest = parts.pop() ?? '';
+  const messages: Array<{ event: string; data: string }> = [];
+
+  for (const part of parts) {
+    if (!part.trim()) continue;
+    const lines = part.split('\n');
+    let event = '';
+    let data = '';
+    for (const line of lines) {
+      if (line.startsWith('event: ')) event = line.slice(7).trim();
+      else if (line.startsWith('data: ')) {
+        if (data) data += '\n';
+        data += line.slice(6);
+      }
+    }
+    if (event || data) messages.push({ event, data });
+  }
+
+  return { messages, rest };
+}
+
+function handleSSEEvent(
+  event: string,
+  data: string,
+  handlers: {
+    onDelta?: (delta: string) => void;
+    onResult?: (result: any) => void;
+    onError?: (error: string) => void;
+    onComplete?: () => void;
+  }
+) {
+  try {
+    if (event === 'results') {
+      const parsed = JSON.parse(data);
+      handlers.onResult?.(parsed);
+    } else if (event === 'delta') {
+      handlers.onDelta?.(data);
+    } else if (event === 'done') {
+      handlers.onComplete?.();
+    } else if (event === 'error') {
+      handlers.onError?.(data);
+    }
+  } catch (e) {
+    console.error(`[SSE Parse Error] event=${event}:`, e);
+  }
+}
+
 export function streamChatSearch(
   payload: ChatSearchStreamRequest,
   handlers: {
@@ -44,7 +93,6 @@ export function streamChatSearch(
   }
 
   const controller = new AbortController();
-
   const maxRetries = 2;
 
   const openStream = async (attempt: number) => {
@@ -54,8 +102,8 @@ export function streamChatSearch(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'text/event-stream',
+          Authorization: `Bearer ${token}`,
+          Accept: 'text/event-stream',
           'Cache-Control': 'no-cache',
         },
         credentials: 'include',
@@ -69,62 +117,25 @@ export function streamChatSearch(
       reader = res.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let buffer = '';
-      let hasData = false;
+      let completed = false;
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        hasData = true;
-        const chunk = decoder.decode(value, { stream: true });
-        console.log('Raw chunk:', JSON.stringify(chunk)); // 디버깅: 실제 받은 데이터 확인
-        
-        buffer += chunk;
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        buffer += decoder.decode(value, { stream: true });
+        const { messages, rest } = drainSSEBuffer(buffer);
+        buffer = rest;
 
-        for (const raw of lines) {
-          const line = raw.trim();
-          if (!line) continue;
-
-          console.log('Processing line:', JSON.stringify(trimmed)); // 디버깅
-
-            if (content === '[DONE]') {
-              handlers.onComplete?.();
-              return;
-            }
-
-            // JSON 형태인지 확인
-            if (content.startsWith('{') || content.startsWith('[')) {
-              try {
-                const parsed = JSON.parse(content);
-                
-                // 검색 결과 객체 처리
-                if (parsed.postId || parsed.results) {
-                  handlers.onResult?.(parsed);
-                }
-                // delta 필드가 있으면 텍스트로 처리
-                else if (parsed.delta !== undefined) {
-                  handlers.onDelta?.(parsed.delta);
-                }
-                // 기타 JSON은 그냥 onResult로
-                else {
-                  handlers.onResult?.(parsed);
-                }
-              } catch {
-                handlers.onDelta?.(content);
-              }
-            } else {
-              // 일반 텍스트는 delta로 전달
-              handlers.onDelta?.(content);
-            }
-          }
+        for (const msg of messages) {
+          if (msg.event === 'done') completed = true;
+          handleSSEEvent(msg.event, msg.data, handlers);
         }
       }
 
-      if (hasData) handlers.onComplete?.();
-      else handlers.onError?.('서버로부터 응답을 받지 못했습니다.');
-
+      if (!completed) {
+        handlers.onComplete?.();
+      }
     } catch (err: any) {
       if (reader) {
         try { await reader.cancel(); } catch (e) { console.error('Reader cancel error:', e); }
@@ -222,28 +233,4 @@ export function streamChatTest(
     });
 
   return () => controller.abort();
-}
-
-async function readStream(reader: ReadableStreamDefaultReader<Uint8Array>, handlers: { onDelta?: (delta: string) => void; onError?: (error: string) => void; onComplete?: () => void; }) {
-  const decoder = new TextDecoder();
-  let buffer = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-
-    for (const line of lines) {
-      if (!line.trim() || !line.startsWith('data: ')) continue;
-      try {
-        const delta = line.slice(6).trim();
-        handlers.onDelta?.(delta);
-      } catch (e) {
-        console.error('SSE parse error', e);
-      }
-    }
-  }
-  handlers.onComplete?.();
 }

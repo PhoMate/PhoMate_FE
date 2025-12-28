@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadPkceVerifier, clearPkceVerifier } from '../utils/pkce';
 import { googleLogin, saveTokens } from '../api/auth';
@@ -7,8 +7,11 @@ export default function OAuthGoogleCallbackPage() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const invokedRef = useRef(false);
 
   useEffect(() => {
+    if (invokedRef.current) return; // StrictMode 등 중복 호출 방지
+    invokedRef.current = true;
     const handleCallback = async () => {
       try {
         const params = new URLSearchParams(window.location.search);
@@ -20,9 +23,10 @@ export default function OAuthGoogleCallbackPage() {
           ?? `${window.location.origin}/oauth/google/callback`;
 
         const data = await googleLogin({ code, codeVerifier: verifier, redirectUri });
-        if (data) {
-          saveTokens(data);
+        if (!data || !data.accessToken) {
+          throw new Error('토큰 응답을 받지 못했습니다.');
         }
+        saveTokens(data);
         clearPkceVerifier();
         navigate('/');
       } catch (e) {
