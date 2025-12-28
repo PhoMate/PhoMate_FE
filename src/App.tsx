@@ -74,16 +74,6 @@ function MainApp({ isGuest }: MainAppProps) {
         window.location.href = '/login';
     };
 
-    const handleLoginRedirect = () => {
-        navigate('/login');
-    };
-
-    useEffect(() => {
-        if (isGuest && activeNav !== 'home') {
-            setActiveNav('home');
-        }
-    }, [isGuest, activeNav]);
-
     return (
         <div className="app-container">
             <Sidebar 
@@ -101,11 +91,8 @@ function MainApp({ isGuest }: MainAppProps) {
                 />
             )}
 
-            {activeNav === 'upload' && !isGuest && (
-                <UploadPage 
-                    onUploadSuccess={handleUploadSuccess}
-                    isPanelOpen={isRightPanelOpen}
-                />
+            {activeNav === 'upload' && (
+                <UploadPage onUploadSuccess={handleUploadSuccess} />
             )}
 
             {activeNav === 'profile' && !isGuest && (
@@ -173,29 +160,14 @@ export default function App() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const checkAuth = () => {
-            const token = localStorage.getItem('accessToken');
-            const guest = localStorage.getItem('isGuest') === 'true';
-            
-            console.log('🔍 Auth Check:', { token: !!token, guest, tokenValue: token });
-            
-            setIsLoggedIn(!!token);
-            setIsGuest(guest);
-            setIsLoading(false);
-        };
-
-        checkAuth();
-
-        window.addEventListener('storage', checkAuth);
-        return () => window.removeEventListener('storage', checkAuth);
+        const token = localStorage.getItem('accessToken');
+        setIsLoggedIn(!!token);
+        setIsLoading(false);
     }, []);
 
     if (isLoading) {
         return <div>로딩 중...</div>;
     }
-
-    const isAuthenticated = isLoggedIn || isGuest;
-    console.log('🔑 isAuthenticated:', isAuthenticated, { isLoggedIn, isGuest });
 
     return (
         <BrowserRouter>

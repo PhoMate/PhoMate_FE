@@ -172,7 +172,7 @@ export async function sendChatEdit(payload: {
   chatSessionId: number;
   editSessionId: number;
   userText: string;
-}) {
+}): Promise<ChatSendResponse> {
   return apiClient.post('/api/chat/send-edit', payload);
 }
 
