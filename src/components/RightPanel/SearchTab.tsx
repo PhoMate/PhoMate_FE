@@ -56,6 +56,31 @@ export default function SearchTab({ isGuest }: SearchTabProps) {
 
             if (!newSessionId) throw new Error('세션 생성 실패');
 
+            const dispatchFeedResults = (payload: any) => {
+                try {
+                    window.dispatchEvent(new CustomEvent('phomate:search-results', { detail: payload }));
+                } catch (e) {
+                    console.error('검색 결과 디스패치 실패', e);
+                }
+            };
+
+            const extractItems = (data: any): any[] => {
+                if (!data) return [];
+                const candidates = [
+                    data.items,
+                    data.results,
+                    data.data?.items,
+                    data.data?.results,
+                    data.result?.items,
+                    data.posts,
+                    data.photos,
+                ].filter(Array.isArray);
+                if (candidates.length > 0) return candidates[0] as any[];
+                if (Array.isArray(data)) return data;
+                if (data.postId || data.thumbnailUrl || data.imageUrl || data.id) return [data];
+                return [];
+            };
+
             streamChatSearch(
                 { chatSessionId: newSessionId, userText: text },
                 {
@@ -65,7 +90,18 @@ export default function SearchTab({ isGuest }: SearchTabProps) {
                             m.id === botMessageId ? { ...m, content: fullText, streaming: true } : m
                         ));
                     },
-                    onResult: () => {},
+                    onResult: (data: any) => {
+                        // 스트림 결과를 메인 피드로 전달
+                        const items = extractItems(data);
+                        if (items.length > 0) {
+                            dispatchFeedResults({ items, query: text });
+                            // UI 안내: 결과를 메인 피드에 표시
+                            setMessages(prev => prev.map(m =>
+                                m.id === botMessageId ? { ...m, streaming: false, content: fullText || '메인 피드에 검색 결과를 표시했습니다.' } : m
+                            ));
+                            setIsStreaming(false);
+                        }
+                    },
                     onError: (err) => {
                         console.error(err);
                         setMessages(prev => prev.map(m =>

@@ -49,6 +49,11 @@ function MainApp({ isGuest }: MainAppProps) {
     };
 
     const handleAuthorClick = async (authorId: number) => {
+        // 게스트 사용자는 프로필 이동 차단
+        if (isGuest) {
+            alert('로그인 후 프로필을 볼 수 있습니다.');
+            return;
+        }
         console.log('handleAuthorClick called with authorId:', authorId);
         try {
             console.log('Fetching member info for:', authorId);

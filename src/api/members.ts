@@ -20,5 +20,6 @@ export async function getMyInfo(): Promise<MemberInfo> {
  * GET /api/members/{memberId}
  */
 export async function getMemberInfo(memberId: number): Promise<MemberInfo> {
-  return apiClient.publicGet<MemberInfo>(`/api/members/${memberId}`);
+  // 인증된 요청으로 변경 (토큰 필요)
+  return apiClient.get<MemberInfo>(`/api/members/${memberId}`);
 }
