@@ -74,4 +74,3 @@ export async function togglePostLike(postId: number): Promise<LikesToggleRespons
 }
 
 // cursor 기반 목록: fetchPosts로 통일
-
