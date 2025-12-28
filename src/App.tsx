@@ -74,6 +74,17 @@ function MainApp({ isGuest }: MainAppProps) {
         window.location.href = '/login';
     };
 
+    // 게스트는 홈 외 이동을 막기 위한 안전장치
+    useEffect(() => {
+        if (isGuest && activeNav !== 'home') {
+            setActiveNav('home');
+        }
+    }, [isGuest, activeNav]);
+
+    const handleLoginRedirect = () => {
+        navigate('/login');
+    };
+
     return (
         <div className="app-container">
             <Sidebar 
@@ -91,7 +102,7 @@ function MainApp({ isGuest }: MainAppProps) {
                 />
             )}
 
-            {activeNav === 'upload' && (
+            {activeNav === 'upload' && !isGuest && (
                 <UploadPage onUploadSuccess={handleUploadSuccess} />
             )}
 
@@ -161,13 +172,17 @@ export default function App() {
 
     useEffect(() => {
         const token = localStorage.getItem('accessToken');
+        const guest = localStorage.getItem('isGuest') === 'true';
         setIsLoggedIn(!!token);
+        setIsGuest(guest);
         setIsLoading(false);
     }, []);
 
     if (isLoading) {
         return <div>로딩 중...</div>;
     }
+
+    const isAuthenticated = isLoggedIn || isGuest;
 
     return (
         <BrowserRouter>

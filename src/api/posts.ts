@@ -65,8 +65,12 @@ export async function deletePost(postId: number): Promise<void> {
 }
 
 export async function togglePostLike(postId: number): Promise<LikesToggleResponseDTO> {
+  const token = localStorage.getItem('accessToken') || '';
   const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/likes`, {
     method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     credentials: 'include',
   });
   if (!res.ok) throw new Error('게시글 좋아요 토글 실패');
