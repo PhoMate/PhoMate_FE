@@ -1,6 +1,5 @@
-/// <reference types="vite/client" />
-
 import { StartSessionResponse, ChatSearchStreamRequest, ChatStreamRequest, ChatSendResponse } from '../types/chat';
+import * as apiClient from './apiClient';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
