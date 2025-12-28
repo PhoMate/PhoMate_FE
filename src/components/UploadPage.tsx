@@ -5,9 +5,10 @@ import '../styles/UploadPage.css';
 
 type UploadPageProps = {
     onUploadSuccess: () => void;
+    isPanelOpen?: boolean;
 };
 
-export default function UploadPage({ onUploadSuccess }: UploadPageProps) {
+export default function UploadPage({ onUploadSuccess, isPanelOpen = false }: UploadPageProps) {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [title, setTitle] = useState('');
@@ -59,7 +60,7 @@ export default function UploadPage({ onUploadSuccess }: UploadPageProps) {
     };
 
     return (
-        <main className="upload-page">
+        <div className={`upload-page ${isPanelOpen ? 'with-panel' : ''}`}>
             <div className="upload-container">
                 <section 
                     className={`upload-left ${previewUrl ? 'has-image' : ''}`}
@@ -128,6 +129,6 @@ export default function UploadPage({ onUploadSuccess }: UploadPageProps) {
                     </div>
                 </section>
             </div>
-        </main>
+        </div>
     );
 }

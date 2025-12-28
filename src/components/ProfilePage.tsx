@@ -2,42 +2,65 @@ import React, { useState, useEffect } from 'react';
 import { Photo } from '../types';
 import PhotoCard from './PhotoCard';
 import { ArrowLeft } from 'lucide-react';
-import { toggleFollow } from '../api/follow'; 
+import { toggleFollow } from '../api/follow';
+import { getMemberPhotos } from '../api/photos';
 import '../styles/ProfilePage.css';
 
 type UserInfo = {
-    id: number;           
+    id: number;
     name: string;
     profileUrl: string;
     description?: string;
-    isFollowed?: boolean; 
+    isFollowed?: boolean;
 };
 
 type ProfilePageProps = {
     onPhotoSelect: (photo: Photo) => void;
     onFollowClick?: () => void;
     onBack?: () => void;
-    userInfo?: UserInfo; 
+    userInfo?: UserInfo;
     isMe?: boolean;
+    isPanelOpen?: boolean;
+    onEditPhoto?: (photo: Photo) => void;
+    onDeletePhoto?: (photoId: string) => void;
 };
-
-const myPhotos: Photo[] = [ /* ... */ ];
 
 export default function ProfilePage({ 
     onPhotoSelect, 
     onFollowClick, 
     userInfo, 
     onBack,
-    isMe = true 
+    isMe = true,
+    isPanelOpen = false,
+    onEditPhoto,
+    onDeletePhoto
 }: ProfilePageProps) {
 
     const [isFollowed, setIsFollowed] = useState(userInfo?.isFollowed || false);
+    const [photos, setPhotos] = useState<Photo[]>([]);
 
     useEffect(() => {
         if (userInfo) {
             setIsFollowed(userInfo.isFollowed || false);
         }
     }, [userInfo]);
+
+    useEffect(() => {
+        const fetchPhotos = async () => {
+            const targetId = userInfo?.id;
+            
+            if (targetId) {
+                try {
+                    const data = await getMemberPhotos(String(targetId)) as { photos: Photo[] };
+                    setPhotos(data.photos);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        };
+
+        fetchPhotos();
+    }, [userInfo, isMe]);
 
     const displayProfile = {
         name: userInfo?.name || ".",
@@ -55,13 +78,13 @@ export default function ProfilePage({
             const result = await toggleFollow(userInfo.id);
             setIsFollowed(result.followed);
         } catch (error) {
-            console.error("팔로우 요청 실패:", error);
+            console.error(error);
             setIsFollowed(previousState); 
         }
     };
 
     return (
-        <div className="profile-page-container">
+        <div className={`profile-page-container ${isPanelOpen ? 'with-panel' : ''}`}>
             <aside className="profile-sidebar">
                 {!isMe && (
                     <div className="profile-header-nav">
@@ -102,11 +125,14 @@ export default function ProfilePage({
 
             <main className="profile-gallery">
                 <div className="gallery-grid">
-                    {myPhotos.map(photo => (
+                    {photos.map(photo => (
                         <PhotoCard 
                             key={photo.id} 
                             photo={photo} 
                             onClick={() => onPhotoSelect(photo)}
+                            isMe={isMe}
+                            onEditClick={() => onEditPhoto?.(photo)}
+                            onDeleteClick={() => onDeletePhoto?.(photo.id)}
                         />
                     ))}
                 </div>
