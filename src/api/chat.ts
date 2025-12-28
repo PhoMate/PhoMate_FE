@@ -45,9 +45,10 @@ export function streamChatSearch(
 
   const controller = new AbortController();
 
-  (async () => {
+  const maxRetries = 2;
+
+  const openStream = async (attempt: number) => {
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
-    
     try {
       const res = await fetch(`${API_BASE_URL}/api/chat/search/stream`, {
         method: 'POST',
@@ -60,29 +61,19 @@ export function streamChatSearch(
         credentials: 'include',
         body: JSON.stringify(payload),
         signal: controller.signal,
-        keepalive: false,
       });
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-      }
-      
-      if (!res.body) {
-        throw new Error('No response body');
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      if (!res.body) throw new Error('No response body');
 
       reader = res.body.getReader();
-      const decoder = new TextDecoder();
+      const decoder = new TextDecoder('utf-8');
       let buffer = '';
       let hasData = false;
 
       while (true) {
         const { done, value } = await reader.read();
-        
-        if (done) {
-          console.log('Stream completed normally');
-          break;
-        }
+        if (done) break;
 
         hasData = true;
         const chunk = decoder.decode(value, { stream: true });
@@ -92,17 +83,13 @@ export function streamChatSearch(
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed) continue;
+        for (const raw of lines) {
+          const line = raw.trim();
+          if (!line) continue;
 
           console.log('Processing line:', JSON.stringify(trimmed)); // 디버깅
 
-          if (trimmed.startsWith('data: ')) {
-            const content = trimmed.slice(6).trim();
-            
             if (content === '[DONE]') {
-              console.log('Received [DONE] signal');
               handlers.onComplete?.();
               return;
             }
@@ -124,8 +111,7 @@ export function streamChatSearch(
                 else {
                   handlers.onResult?.(parsed);
                 }
-              } catch (parseError) {
-                console.warn('JSON parse failed:', content);
+              } catch {
                 handlers.onDelta?.(content);
               }
             } else {
@@ -135,36 +121,34 @@ export function streamChatSearch(
           }
         }
       }
-      
-      if (hasData) {
-        handlers.onComplete?.();
-      } else {
-        handlers.onError?.('서버로부터 응답을 받지 못했습니다.');
-      }
-      
+
+      if (hasData) handlers.onComplete?.();
+      else handlers.onError?.('서버로부터 응답을 받지 못했습니다.');
+
     } catch (err: any) {
       if (reader) {
-        try {
-          await reader.cancel();
-        } catch (e) {
-          console.error('Reader cancel error:', e);
-        }
+        try { await reader.cancel(); } catch (e) { console.error('Reader cancel error:', e); }
       }
 
-      if (err.name === 'AbortError') {
+      if (err?.name === 'AbortError') {
         console.log('Stream aborted by user');
         return;
       }
 
-      console.error('Stream error details:', {
-        name: err.name,
-        message: err.message,
-        stack: err.stack
-      });
-      
-      handlers.onError?.(err.message || 'network error');
+      const msg = String(err?.message || err);
+      const isProtocolErr = msg.includes('ERR_HTTP2_PROTOCOL_ERROR') || msg.toLowerCase().includes('network error');
+      if (isProtocolErr && attempt < maxRetries) {
+        handlers.onDelta?.('\n[연결 문제로 재시도 중...]');
+        setTimeout(() => openStream(attempt + 1), 500);
+        return;
+      }
+
+      console.error('Stream error details:', { name: err?.name, message: msg });
+      handlers.onError?.(msg);
     }
-  })();
+  };
+
+  openStream(0);
 
   return () => {
     console.log('Aborting stream');

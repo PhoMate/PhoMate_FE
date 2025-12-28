@@ -17,6 +17,7 @@ export default function FeedPage({ onPhotoSelect, isPanelOpen = true }: FeedPage
     const [cursor, setCursor] = useState<Cursor | null>(null);
     const [hasMore, setHasMore] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState<string | null>(null);
     const observerTarget = useRef<HTMLDivElement | null>(null);
 
     const loadingRef = useRef(false);
@@ -67,6 +68,35 @@ export default function FeedPage({ onPhotoSelect, isPanelOpen = true }: FeedPage
         }
     }, [PAGE_SIZE, cursor]);
 
+    // 검색 결과 수신: 메인 피드를 해당 결과로 교체
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const detail = (e as CustomEvent).detail || {};
+            const items = detail.items || [];
+            const query = detail.query || null;
+            if (!Array.isArray(items) || items.length === 0) return;
+
+            const mapped: Photo[] = items.map((item: any) => ({
+                id: String(item.postId ?? item.id ?? ''),
+                title: item.title ?? '',
+                thumbnailUrl: item.thumbnailUrl ?? item.imageUrl ?? item.originalUrl ?? item.url ?? '',
+                originalUrl: item.originalUrl ?? item.imageUrl ?? item.thumbnailUrl ?? item.url ?? '',
+                likeCount: item.likeCount ?? 0,
+                createdAt: item.createdAt ?? '',
+            }));
+
+            setPhotos(mapped);
+            setError(null);
+            setHasMore(false);
+            hasMoreRef.current = false;
+            setCursor(null);
+            setSearchQuery(query);
+        };
+
+        window.addEventListener('phomate:search-results', handler as EventListener);
+        return () => window.removeEventListener('phomate:search-results', handler as EventListener);
+    }, []);
+
     // Intersection Observer로 무한 스크롤
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -92,7 +122,7 @@ export default function FeedPage({ onPhotoSelect, isPanelOpen = true }: FeedPage
     return (
         <main className={`main-feed ${isPanelOpen ? 'with-panel' : ''}`}>
             <div className="feed-header">
-                <h2>PHOMATE</h2>
+                <h2>PHOMATE {searchQuery ? `- 검색: ${searchQuery}` : ''}</h2>
             </div>
 
             {error && (

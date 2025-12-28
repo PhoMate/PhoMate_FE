@@ -47,6 +47,11 @@ function MainApp({ isGuest }: MainAppProps) {
     };
 
     const handleAuthorClick = async (authorId: number) => {
+        if (isGuest) {
+            alert('로그인 후 프로필을 볼 수 있습니다.');
+            return;
+        }
+        console.log('handleAuthorClick called with authorId:', authorId);
         try {
             const memberInfo = await getMemberInfo(authorId);
             const newTargetUser: FollowUser = {
