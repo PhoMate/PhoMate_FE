@@ -4,6 +4,11 @@
     background-color: #fff;
     padding: 40px 40px 40px 20px; 
     overflow: hidden;
+    transition: margin-right 0.3s ease;
+}
+
+.upload-page.with-panel {
+    margin-right: 360px;
 }
 
 .upload-container {

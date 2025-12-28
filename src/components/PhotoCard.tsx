@@ -6,6 +6,9 @@ import '../styles/PhotoCard.css';
 type PhotoCardProps = {
     photo: Photo;
     onClick?: (photo: Photo) => void;
+    isMe?: boolean;              
+    onEditClick?: () => void;    
+    onDeleteClick?: () => void;
 };
 
 export default function PhotoCard({ photo, onClick }: PhotoCardProps) {

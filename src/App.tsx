@@ -15,10 +15,8 @@ export default function App() {
     const [selectedPhoto, setSelectedPhoto] = useState<PhotoDetail | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     
-    // 팔로우 페이지용 타겟 유저
     const [targetUser, setTargetUser] = useState<FollowUser | null>(null);
     
-    // AI 편집용 사진 정보 (RightPanel로 전달)
     const [photoToEdit, setPhotoToEdit] = useState<PhotoDetail | null>(null);
 
     const handleGoToFollow = () => setActiveNav('follow');
@@ -44,7 +42,6 @@ export default function App() {
 
     const handleUploadSuccess = () => setActiveNav('home');
 
-    // [AI 편집] 모달에서 버튼 클릭 시 실행
     const handleAiEditRequest = (photo: PhotoDetail) => {
         setPhotoToEdit(photo);       
         setIsDetailModalOpen(false); 
@@ -63,14 +60,18 @@ export default function App() {
             )}
 
             {activeNav === 'upload' && (
-                <UploadPage onUploadSuccess={handleUploadSuccess} />
+                <UploadPage 
+                    onUploadSuccess={handleUploadSuccess}
+                    isPanelOpen={isRightPanelOpen}
+                 />
             )}
 
             {activeNav === 'profile' && (
                 <ProfilePage 
                     isMe={true} 
                     onPhotoSelect={handlePhotoSelect} 
-                    onFollowClick={handleGoToFollow} 
+                    onFollowClick={handleGoToFollow}
+                    isPanelOpen={isRightPanelOpen} 
                 />
             )}
 
@@ -93,6 +94,7 @@ export default function App() {
                     }}
                     onPhotoSelect={handlePhotoSelect}
                     onBack={handleBackToFollowList}
+                    isPanelOpen={isRightPanelOpen}
                 />
             )}
 
