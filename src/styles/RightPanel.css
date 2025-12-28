@@ -280,3 +280,10 @@
     margin-bottom: 4px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
+
+/* 텍스트 줄바꿈/공백 보존 처리 */
+.chat-text {
+    white-space: pre-wrap;   /* 공백/개행 보존 + 줄바꿈 */
+    word-break: break-word;
+}
+

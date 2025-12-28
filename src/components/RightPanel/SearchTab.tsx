@@ -14,6 +14,8 @@ export default function SearchTab({ isGuest }: SearchTabProps) {
     const [isStreaming, setIsStreaming] = useState(false);
     const [chatSessionId, setChatSessionId] = useState<number | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const stopRef = useRef<null | (() => void)>(null);
+    const runningRef = useRef(false);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -22,7 +24,9 @@ export default function SearchTab({ isGuest }: SearchTabProps) {
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         const text = inputMessage.trim();
-        if (!text || isStreaming) return;
+        if (!text) return;
+        // 이미 스트림 실행 중이면 중복 방지
+        if (runningRef.current) return;
 
         const userMessage: Message = {
             id: crypto.randomUUID(),
@@ -40,7 +44,12 @@ export default function SearchTab({ isGuest }: SearchTabProps) {
             return;
         }
 
+        // 기존 스트림이 남아있으면 종료
+        stopRef.current?.();
+        stopRef.current = null;
+
         setIsStreaming(true);
+        runningRef.current = true;
         const botMessageId = crypto.randomUUID();
         setMessages(prev => [...prev, { id: botMessageId, role: 'bot', content: '', streaming: true, type: 'text' }]);
 
@@ -81,7 +90,7 @@ export default function SearchTab({ isGuest }: SearchTabProps) {
                 return [];
             };
 
-            streamChatSearch(
+            stopRef.current = streamChatSearch(
                 { chatSessionId: newSessionId, userText: text },
                 {
                     onDelta: (delta) => {
@@ -97,9 +106,8 @@ export default function SearchTab({ isGuest }: SearchTabProps) {
                             dispatchFeedResults({ items, query: text });
                             // UI 안내: 결과를 메인 피드에 표시
                             setMessages(prev => prev.map(m =>
-                                m.id === botMessageId ? { ...m, streaming: false, content: fullText || '메인 피드에 검색 결과를 표시했습니다.' } : m
+                                m.id === botMessageId ? { ...m, streaming: true, content: fullText || '메인 피드에 검색 결과를 표시했습니다.' } : m
                             ));
-                            setIsStreaming(false);
                         }
                     },
                     onError: (err) => {
@@ -107,12 +115,16 @@ export default function SearchTab({ isGuest }: SearchTabProps) {
                         setMessages(prev => prev.map(m =>
                             m.id === botMessageId ? { ...m, streaming: false, content: fullText || '오류가 발생했습니다.' } : m
                         ));
+                        runningRef.current = false;
+                        stopRef.current = null;
                         setIsStreaming(false);
                     },
                     onComplete: () => {
                         setMessages(prev => prev.map(m =>
                             m.id === botMessageId ? { ...m, streaming: false, content: fullText || '응답 없음' } : m
                         ));
+                        runningRef.current = false;
+                        stopRef.current = null;
                         setIsStreaming(false);
                     }
                 }
@@ -122,9 +134,18 @@ export default function SearchTab({ isGuest }: SearchTabProps) {
             setMessages(prev => prev.map(m =>
                 m.id === botMessageId ? { ...m, streaming: false, content: '서버 연결 오류' } : m
             ));
+            runningRef.current = false;
+            stopRef.current = null;
             setIsStreaming(false);
         }
     };
+
+    useEffect(() => {
+        return () => {
+            stopRef.current?.();
+            runningRef.current = false;
+        };
+    }, []);
 
     return (
         <div className="panel-content-wrapper">

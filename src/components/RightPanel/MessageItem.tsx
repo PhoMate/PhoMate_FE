@@ -11,10 +11,10 @@ export default function MessageItem({ msg }: { msg: Message }) {
         <div className={`message-row ${isUser ? 'is-user' : 'is-bot'}`}>
             <div className={`message-bubble ${isUser ? 'message-user' : 'message-bot'}`}>
                 {msg.type === 'text' ? (
-                    <>
+                    <div className="chat-text">
                         {msg.content}
                         {msg.role === 'bot' && msg.streaming && <span className="streaming-cursor">▍</span>}
-                    </>
+                    </div>
                 ) : (
                     <div className="image-msg-wrapper">
                         <img src={msg.previewUrl} alt={msg.fileName} className="chat-image-preview" />

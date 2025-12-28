@@ -23,11 +23,13 @@ export async function startChatSession(): Promise<StartSessionResponse> {
   return data; // { sessionId: number }
 }
 
-/**
- * 이후 채팅: 스트리밍
- * POST /api/chat/search/stream
- * delta/result 분리 처리
- */
+function parseField(line: string, key: 'event' | 'data'): string | null {
+  // "event:foo" or "event: foo" 둘 다 처리
+  const prefix = key + ':';
+  if (!line.startsWith(prefix)) return null;
+  return line.slice(prefix.length).trimStart(); // 앞 공백만 제거
+}
+
 function drainSSEBuffer(buffer: string): { messages: Array<{ event: string; data: string }>; rest: string } {
   const parts = buffer.split('\n\n');
   const rest = parts.pop() ?? '';
@@ -35,21 +37,33 @@ function drainSSEBuffer(buffer: string): { messages: Array<{ event: string; data
 
   for (const part of parts) {
     if (!part.trim()) continue;
+
     const lines = part.split('\n');
     let event = '';
     let data = '';
-    for (const line of lines) {
-      if (line.startsWith('event: ')) event = line.slice(7).trim();
-      else if (line.startsWith('data: ')) {
+
+    for (const rawLine of lines) {
+      const line = rawLine.trimEnd();
+
+      const ev = parseField(line, 'event');
+      if (ev !== null) {
+        event = ev;
+        continue;
+      }
+
+      const da = parseField(line, 'data');
+      if (da !== null) {
         if (data) data += '\n';
-        data += line.slice(6);
+        data += da;
       }
     }
+
     if (event || data) messages.push({ event, data });
   }
 
   return { messages, rest };
 }
+
 
 function handleSSEEvent(
   event: string,
@@ -217,9 +231,9 @@ export function streamChatTest(
         buffer = lines.pop() || '';
 
         for (const line of lines) {
-          if (!line.trim() || !line.startsWith('data: ')) continue;
+          if (!line.startsWith('data: ')) continue;
           try {
-            const delta = line.slice(6).trim();
+            const delta = line.slice(6);
             handlers.onDelta?.(delta);
           } catch (e) {
             console.error('SSE parse error', e);
