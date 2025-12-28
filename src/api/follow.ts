@@ -1,19 +1,10 @@
 import { get, post } from './apiClient';
+import type { FollowToggleResponseDTO, FolloweeResponseDTO } from '../types/follow';
 
-export interface FollowToggleResponse {
-  followed: boolean;
-}
-
-export interface FollowMember {
-  memberId: number;
-  nickname: string;
-  profileImageUrl: string;
-}
-
-export const toggleFollow = async (followeeId: number): Promise<FollowToggleResponse> => {
-  return post<FollowToggleResponse>(`/api/follows/toggle?followeeId=${followeeId}`);
+export const toggleFollow = async (followeeId: number): Promise<FollowToggleResponseDTO> => {
+  return post<FollowToggleResponseDTO>(`/api/follows/toggle?followeeId=${followeeId}`);
 };
 
-export const getMyFollowList = async (): Promise<FollowMember[]> => {
-  return get<FollowMember[]>('/api/follows/me');
+export const getMyFollowList = async (): Promise<FolloweeResponseDTO[]> => {
+  return get<FolloweeResponseDTO[]>('/api/follows/me');
 };

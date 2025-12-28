@@ -1,20 +1,9 @@
 import * as apiClient from './apiClient';
+import type { GoogleLoginRequestDTO, GoogleLoginResponseDTO, RefreshRequestDTO } from '../types/auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // ============ 타입 정의 ============
-
-export interface GoogleLoginRequest {
-  code: string;
-  redirectUri: string;
-  codeVerifier: string;
-}
-
-export interface AuthResponse {
-  memberId: number;
-  accessToken: string;
-  refreshToken: string;
-}
 
 export interface LoginRequest {
   email: string;
@@ -27,23 +16,34 @@ export interface SignupRequest {
   nickname: string;
 }
 
+export interface AuthResponse {
+  memberId: number;
+  accessToken: string;
+  refreshToken: string;
+}
+
 // ============ Google OAuth ============
 
 /**
  * Google 로그인
  * POST /api/auth/google
  */
-export async function googleLogin(params: {
-  code: string;
-  codeVerifier: string;
-  redirectUri: string;
-}) {
+export async function googleLogin(params: GoogleLoginRequestDTO): Promise<GoogleLoginResponseDTO | null> {
+  if (!params.codeVerifier) {
+    console.warn('googleLogin: codeVerifier is empty');
+  } else {
+    console.log('googleLogin: codeVerifier', params.codeVerifier);
+  }
+
   const res = await fetch(`${API_BASE_URL}/api/auth/google`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
+    redirect: 'manual', // 리다이렉트 여부 확인용
     body: JSON.stringify(params),
   });
+
+  console.log('redirected?', res.redirected, 'url:', res.url, 'status:', res.status);
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -62,15 +62,18 @@ export async function googleLogin(params: {
  */
 export async function reissueToken(
   refreshToken: string
-): Promise<AuthResponse> {
+): Promise<GoogleLoginResponseDTO> {
+  if (!refreshToken) {
+    throw new Error('refreshToken이 없습니다.');
+  }
+
+  const payload: RefreshRequestDTO = { refreshToken };
   const response = await fetch(`${API_BASE_URL}/api/auth/reissue`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      refreshToken,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -78,11 +81,15 @@ export async function reissueToken(
   }
 
   const data = await response.json();
-  return {
+  const tokens: GoogleLoginResponseDTO = {
     memberId: data.memberId,
     accessToken: data.accessToken,
     refreshToken: data.refreshToken,
   };
+
+  // 받은 토큰을 저장하여 이후 호출에서 사용 가능하게 함
+  saveTokens(tokens);
+  return tokens;
 }
 
 /**

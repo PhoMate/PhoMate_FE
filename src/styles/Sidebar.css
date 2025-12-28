@@ -67,3 +67,11 @@
 .logout-btn:hover {
   background-color: #ee5a52;
 }
+
+.logout-btn.login-btn {
+  background-color: #10b981; /* emerald */
+}
+
+.logout-btn.login-btn:hover {
+  background-color: #0e9f6e;
+}

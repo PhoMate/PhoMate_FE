@@ -10,18 +10,27 @@ export interface ChatSession {
   createdAt: string;
 }
 
-export interface StartSessionRequest {
-  message: string;
-}
-
 export interface StartSessionResponse {
-  sessionId: string;
-  message: string; // 첫 응답
+  chatSessionId: number;
 }
 
-export interface StreamSearchRequest {
-  sessionId: string;
-  query: string;
+export interface ChatSearchStreamRequest {
+  chatSessionId: number;
+  userText: string;
+}
+
+export interface ChatStreamRequest {
+  memberId: number;
+  chatSessionId: number;
+  userText: string;
+}
+
+export interface ChatSendResponse {
+  chatSessionId: number;
+  userMessageId: number;
+  assistantMessageId: number;
+  assistantContent: string;
+  editedUrl: string;
 }
 
 export type ChatEventType = 'delta' | 'result' | 'error';

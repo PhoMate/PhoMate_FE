@@ -7,9 +7,11 @@
  */
 export function generateCodeVerifier(length: number = 64): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+  const array = new Uint32Array(length);
+  crypto.getRandomValues(array);
   let result = "";
   for (let i = 0; i < length; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)];
+    result += chars[array[i] % chars.length];
   }
   return result;
 }

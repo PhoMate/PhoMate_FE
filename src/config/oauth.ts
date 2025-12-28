@@ -16,6 +16,7 @@ export function getGoogleAuthUrl(codeChallenge: string): string {
     scope: 'openid email profile',
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
+    prompt: 'consent',
   });
 
   return `${GOOGLE_CONFIG.authorizationEndpoint}?${params.toString()}`;

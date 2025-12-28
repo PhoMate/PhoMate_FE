@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Photo, FeedResponse } from '../types';
-import type { PostListParams, PostListResponse } from '../types/post';
+import { Photo } from '../types';
+import type { PostListParams, PostFeedResponseDTO, Cursor } from '../types/post';
 import { fetchPosts } from '../api/posts';
 import FeedGrid from './FeedGrid';
 import '../styles/FeedPage.css';
@@ -14,7 +14,7 @@ export default function FeedPage({ onPhotoSelect, isPanelOpen = true }: FeedPage
     const PAGE_SIZE = 12;
     const [photos, setPhotos] = useState<Photo[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [page, setPage] = useState(1);
+    const [cursor, setCursor] = useState<Cursor | null>(null);
     const [hasMore, setHasMore] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const observerTarget = useRef<HTMLDivElement | null>(null);
@@ -24,10 +24,10 @@ export default function FeedPage({ onPhotoSelect, isPanelOpen = true }: FeedPage
 
     // 초기 로드
     useEffect(() => {
-        loadPhotos(1);
+        loadPhotos();
     }, []);
 
-    const loadPhotos = useCallback(async (pageToLoad: number) => {
+    const loadPhotos = useCallback(async () => {
         if (loadingRef.current || !hasMoreRef.current) return;
 
         loadingRef.current = true;
@@ -35,32 +35,44 @@ export default function FeedPage({ onPhotoSelect, isPanelOpen = true }: FeedPage
         setError(null);
 
         try {
-            const response = await fetchPosts({ page: pageToLoad, size: PAGE_SIZE } as PostListParams) as unknown as PostListResponse;
-            const chunk = (response as any).items ?? []; // items 기반 리스트
-            const total = (response as any).total ?? 0;
+            const params: PostListParams = {
+                sort: cursor?.sort,
+                cursorTime: cursor?.cursorTime ?? undefined,
+                cursorId: cursor?.cursorId ?? undefined,
+                cursorLike: cursor?.cursorLike ?? undefined,
+                size: PAGE_SIZE,
+            };
 
-            setPhotos(prev => (pageToLoad === 1 ? chunk : [...prev, ...chunk]));
+            const response = await fetchPosts(params) as PostFeedResponseDTO;
+            const chunk = (response.items || []).map<Photo>(item => ({
+                id: String(item.postId),
+                title: item.title,
+                thumbnailUrl: item.thumbnailUrl,
+                originalUrl: item.thumbnailUrl,
+                likeCount: item.likeCount,
+                createdAt: '',
+            }));
 
-            const loadedCount = pageToLoad * PAGE_SIZE;
-            const newHasMore = chunk.length > 0 && loadedCount < total;
+            setPhotos(prev => (cursor ? [...prev, ...chunk] : chunk));
+
+            const newHasMore = Boolean(response.hasNext);
             setHasMore(newHasMore);
             hasMoreRef.current = newHasMore;
-
-            setPage(pageToLoad + 1);
+            setCursor(response.nextCursor ?? null);
         } catch (err) {
             setError(err instanceof Error ? err.message : '알 수 없는 오류');
         } finally {
             loadingRef.current = false;
             setIsLoading(false);
         }
-    }, [PAGE_SIZE]);
+    }, [PAGE_SIZE, cursor]);
 
     // Intersection Observer로 무한 스크롤
     useEffect(() => {
         const observer = new IntersectionObserver(
             entries => {
                 if (entries[0].isIntersecting && hasMoreRef.current && !loadingRef.current) {
-                    loadPhotos(page);
+                    loadPhotos();
                 }
             },
             { threshold: 0.1 }
@@ -71,7 +83,7 @@ export default function FeedPage({ onPhotoSelect, isPanelOpen = true }: FeedPage
         }
 
         return () => observer.disconnect();
-    }, [loadPhotos, page]);
+    }, [loadPhotos]);
 
     const handlePhotoClick = (photo: Photo) => {
         onPhotoSelect?.(photo);
@@ -86,7 +98,12 @@ export default function FeedPage({ onPhotoSelect, isPanelOpen = true }: FeedPage
             {error && (
                 <div className="feed-error">
                     <p>{error}</p>
-                    <button onClick={() => loadPhotos(1)} className="retry-btn">
+                    <button onClick={() => {
+                        setCursor(null);
+                        setHasMore(true);
+                        hasMoreRef.current = true;
+                        loadPhotos();
+                    }} className="retry-btn">
                         다시 시도
                     </button>
                 </div>

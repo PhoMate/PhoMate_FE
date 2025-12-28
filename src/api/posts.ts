@@ -1,6 +1,12 @@
 /// <reference types="vite/client" />
 
-import type { PostListParams, PostListResponse, PostDetail, AuthorPostListParams, UpsertPostPayload } from '../types/post';
+import type {
+  PostListParams,
+  PostFeedResponseDTO,
+  PostDetailResponseDTO,
+  PostCreateRequestDTO,
+  LikesToggleResponseDTO,
+} from '../types/post';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // 공통: 쿼리스트링 생성
@@ -10,28 +16,20 @@ const qs = (params: Record<string, any>) =>
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
     .join('&');
 
-export async function fetchPosts(params: PostListParams = {}): Promise<PostListResponse> {
+export async function fetchPosts(params: PostListParams = {}): Promise<PostFeedResponseDTO> {
   const query = qs(params);
   const res = await fetch(`${API_BASE_URL}/api/posts${query ? `?${query}` : ''}`, { credentials: 'include' });
   if (!res.ok) throw new Error('게시글 목록 조회 실패');
   return res.json();
 }
 
-export async function fetchPostsByAuthor(params: AuthorPostListParams): Promise<PostListResponse> {
-  const { authorId, ...rest } = params;
-  const query = qs(rest);
-  const res = await fetch(`${API_BASE_URL}/api/posts/author/${authorId}${query ? `?${query}` : ''}`, { credentials: 'include' });
-  if (!res.ok) throw new Error('작성자 게시글 조회 실패');
-  return res.json();
-}
- 
-export async function fetchPostDetail(postId: number): Promise<PostDetail> {
+export async function fetchPostDetail(postId: number): Promise<PostDetailResponseDTO> {
   const res = await fetch(`${API_BASE_URL}/api/posts/${postId}`, { credentials: 'include' });
   if (!res.ok) throw new Error('게시글 상세 조회 실패');
   return res.json();
 }
 
-export async function createPost(payload: UpsertPostPayload, imageFile: File): Promise<{ postId: number }> {
+export async function createPost(payload: PostCreateRequestDTO, imageFile: File): Promise<{ postId: number }> {
   const form = new FormData();
   form.append('request', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
   form.append('image', imageFile);
@@ -45,7 +43,7 @@ export async function createPost(payload: UpsertPostPayload, imageFile: File): P
   return res.json();
 }
 
-export async function updatePost(postId: number, payload: UpsertPostPayload, imageFile?: File): Promise<void> {
+export async function updatePost(postId: number, payload: PostCreateRequestDTO, imageFile?: File): Promise<void> {
   const form = new FormData();
   form.append('request', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
   if (imageFile) form.append('image', imageFile);
@@ -66,7 +64,7 @@ export async function deletePost(postId: number): Promise<void> {
   if (!res.ok) throw new Error('게시글 삭제 실패');
 }
 
-export async function togglePostLike(postId: number): Promise<{ liked: boolean; likeCount: number }> {
+export async function togglePostLike(postId: number): Promise<LikesToggleResponseDTO> {
   const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/likes`, {
     method: 'POST',
     credentials: 'include',
@@ -74,11 +72,10 @@ export async function togglePostLike(postId: number): Promise<{ liked: boolean; 
   if (!res.ok) throw new Error('게시글 좋아요 토글 실패');
   return res.json();
 }
-
-export async function fetchPostsByPage(params: PostListParams = {}): Promise<PostListResponse> {
-  const query = qs(params);
-  const res = await fetch(`${API_BASE_URL}/api/posts${query ? `?${query}` : ''}`, { credentials: 'include' });
-  if (!res.ok) throw new Error('게시글 목록 조회 실패');
-  const data = await res.json();
-  return data;
+/**
+ * 특정 회원의 사진 목록 조회
+ * GET /api/posts?memberId={memberId}
+ */
+export async function getMemberPhotos(memberId: string): Promise<PostFeedResponseDTO> {
+  return fetchPosts({ memberId } as any);
 }

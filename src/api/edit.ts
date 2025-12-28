@@ -1,4 +1,5 @@
 import { getAccessToken } from './auth';
+import type { EditVersionResponseDTO } from '../types/edit';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -23,13 +24,13 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   return res.json();
 }
 
-export const startEditSession = (postId: number) => 
+export const startEditSession = (postId: number): Promise<EditVersionResponseDTO> => 
   fetchAPI(`/api/edits/start?postId=${postId}`, { method: 'POST' });
 
-export const getCurrentEdit = (sessionId: number) => 
+export const getCurrentEdit = (sessionId: number): Promise<EditVersionResponseDTO> => 
   fetchAPI(`/api/edits/${sessionId}/current`);
 
-export const uploadDirectEdit = (sessionId: number, file: File) => {
+export const uploadDirectEdit = (sessionId: number, file: File): Promise<EditVersionResponseDTO> => {
   const formData = new FormData();
   formData.append('file', file);
   return fetchAPI(`/api/edits/${sessionId}/direct`, {
@@ -38,16 +39,16 @@ export const uploadDirectEdit = (sessionId: number, file: File) => {
   });
 };
 
-export const undoEdit = (sessionId: number) => 
+export const undoEdit = (sessionId: number): Promise<EditVersionResponseDTO> => 
   fetchAPI(`/api/edits/${sessionId}/undo`, { method: 'POST' });
 
-export const redoEdit = (sessionId: number) => 
+export const redoEdit = (sessionId: number): Promise<EditVersionResponseDTO> => 
   fetchAPI(`/api/edits/${sessionId}/redo`, { method: 'POST' });
 
-export const finalizeEdit = (sessionId: number) => 
+export const finalizeEdit = (sessionId: number): Promise<EditVersionResponseDTO> => 
   fetchAPI(`/api/edits/${sessionId}/finalize`, { method: 'POST' });
 
-export const deleteEditSession = (sessionId: number) => 
+export const deleteEditSession = (sessionId: number): Promise<void> => 
   fetchAPI(`/api/edits/${sessionId}`, { method: 'DELETE' });
 
 export const startChatSession = () => 

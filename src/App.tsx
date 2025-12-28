@@ -12,7 +12,11 @@ import UploadPage from './components/UploadPage';
 import { Photo, PhotoDetail } from './types';
 import './App.css';
 
-function MainApp() {
+type MainAppProps = {
+    isGuest: boolean;
+};
+
+function MainApp({ isGuest }: MainAppProps) {
     const navigate = useNavigate();
     const [activeNav, setActiveNav] = useState('home');
     const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
@@ -23,10 +27,18 @@ function MainApp() {
     
     const [photoToEdit, setPhotoToEdit] = useState<PhotoDetail | null>(null);
 
-    const handleGoToFollow = () => setActiveNav('follow');
-    const handleBackToProfile = () => setActiveNav('profile');
+    const handleNavClick = (nav: string) => {
+        if (isGuest && nav !== 'home') {
+            alert('로그인 후 이용 가능한 기능입니다.');
+            return;
+        }
+        setActiveNav(nav);
+    };
+
+    const handleGoToFollow = () => handleNavClick('follow');
+    const handleBackToProfile = () => handleNavClick('profile');
     const handleBackToFollowList = () => {
-        setActiveNav('follow');
+        handleNavClick('follow');
     };
 
     const handleUserClick = (user: FollowUser) => {
@@ -47,6 +59,10 @@ function MainApp() {
     const handleUploadSuccess = () => setActiveNav('home');
 
     const handleAiEditRequest = (photo: PhotoDetail) => {
+        if (isGuest) {
+            alert('로그인 후 AI 편집 기능을 사용할 수 있습니다.');
+            return;
+        }
         setPhotoToEdit(photo);       
         setIsDetailModalOpen(false); 
         setIsRightPanelOpen(true);   
@@ -61,9 +77,26 @@ function MainApp() {
         window.location.href = '/login';
     };
 
+    // 게스트는 홈 외 이동을 막기 위한 안전장치
+    useEffect(() => {
+        if (isGuest && activeNav !== 'home') {
+            setActiveNav('home');
+        }
+    }, [isGuest, activeNav]);
+
+    const handleLoginRedirect = () => {
+        navigate('/login');
+    };
+
     return (
         <div className="app-container">
-            <Sidebar activeNav={activeNav} onNavClick={setActiveNav} />
+            <Sidebar 
+                activeNav={activeNav} 
+                onNavClick={handleNavClick} 
+                isGuest={isGuest}
+                onLogout={handleLogout}
+                onLogin={handleLoginRedirect}
+            />
             
             {activeNav === 'home' && (
                 <FeedPage
@@ -72,14 +105,14 @@ function MainApp() {
                 />
             )}
 
-            {activeNav === 'upload' && (
+            {activeNav === 'upload' && !isGuest && (
                 <UploadPage 
                     onUploadSuccess={handleUploadSuccess}
                     isPanelOpen={isRightPanelOpen}
-                 />
+                />
             )}
 
-            {activeNav === 'profile' && (
+            {activeNav === 'profile' && !isGuest && (
                 <ProfilePage 
                     isMe={true} 
                     onPhotoSelect={handlePhotoSelect} 
@@ -88,14 +121,14 @@ function MainApp() {
                 />
             )}
 
-            {activeNav === 'follow' && (
+            {activeNav === 'follow' && !isGuest && (
                 <FollowPage 
                     onBack={handleBackToProfile} 
                     onUserClick={handleUserClick} 
                 />
             )}
 
-            {activeNav === 'user_profile' && targetUser && (
+            {activeNav === 'user_profile' && targetUser && !isGuest && (
                 <ProfilePage 
                     isMe={false} 
                     userInfo={{
@@ -114,6 +147,7 @@ function MainApp() {
              <RightPanel
                 isOpen={isRightPanelOpen}
                 onClose={() => setIsRightPanelOpen(false)}
+                isGuest={isGuest}
                 selectedPhoto={photoToEdit} 
                 onUpdatePhoto={(newUrl) => {
                     console.log("새 이미지:", newUrl);
@@ -140,17 +174,34 @@ function MainApp() {
 
 export default function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [isGuest, setIsGuest] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const token = localStorage.getItem('accessToken');
-        setIsLoggedIn(!!token);
-        setIsLoading(false);
+        const checkAuth = () => {
+            const token = localStorage.getItem('accessToken');
+            const guest = localStorage.getItem('isGuest') === 'true';
+            
+            console.log('🔍 Auth Check:', { token: !!token, guest, tokenValue: token });
+            
+            setIsLoggedIn(!!token);
+            setIsGuest(guest);
+            setIsLoading(false);
+        };
+
+        checkAuth();
+
+        // 다른 탭/창에서 로그인했을 때 감지
+        window.addEventListener('storage', checkAuth);
+        return () => window.removeEventListener('storage', checkAuth);
     }, []);
 
     if (isLoading) {
         return <div>로딩 중...</div>;
     }
+
+    const isAuthenticated = isLoggedIn || isGuest;
+    console.log('🔑 isAuthenticated:', isAuthenticated, { isLoggedIn, isGuest });
 
     return (
         <BrowserRouter>
@@ -159,9 +210,9 @@ export default function App() {
                 <Route path="/oauth/google/callback" element={<OAuthGoogleCallbackPage />} />
                 <Route 
                     path="/" 
-                    element={isLoggedIn ? <MainApp /> : <Navigate to="/login" replace />} 
+                    element={isAuthenticated ? <MainApp isGuest={isGuest} /> : <Navigate to="/login" replace />} 
                 />
-                <Route path="*" element={<Navigate to={isLoggedIn ? "/" : "/login"} replace />} />
+                <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />} />
             </Routes>
         </BrowserRouter>
     );

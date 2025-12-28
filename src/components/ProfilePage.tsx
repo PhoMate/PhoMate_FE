@@ -3,7 +3,7 @@ import { Photo } from '../types';
 import PhotoCard from './PhotoCard';
 import { ArrowLeft } from 'lucide-react';
 import { toggleFollow } from '../api/follow';
-import { getMemberPhotos } from '../api/photos';
+import { getMemberPhotos } from '../api/posts';
 import '../styles/ProfilePage.css';
 
 type UserInfo = {
@@ -51,8 +51,18 @@ export default function ProfilePage({
             
             if (targetId) {
                 try {
-                    const data = await getMemberPhotos(String(targetId)) as { photos: Photo[] };
-                    setPhotos(data.photos);
+                    const data = await getMemberPhotos(String(targetId));
+                    // PostFeedResponseDTO의 items 필드를 Photo 배열로 변환
+                    const photoList = data.items.map(item => ({
+                        id: String(item.postId),
+                        thumbnailUrl: item.thumbnailUrl,
+                        originalUrl: item.thumbnailUrl,
+                        title: item.title,
+                        likeCount: item.likeCount,
+                        likedByMe: item.likedByMe,
+                        createdAt: new Date().toISOString(),
+                    } as Photo));
+                    setPhotos(photoList);
                 } catch (e) {
                     console.error(e);
                 }

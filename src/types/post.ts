@@ -1,44 +1,21 @@
-// Post 관련 타입
-export interface PostListParams {
-  page?: number;
-  size?: number;
-  keyword?: string;
-  categoryId?: number;
-  sort?: string;
-}
-
-export interface AuthorPostListParams extends PostListParams {
-  authorId: number;
-}
-
-export interface UpsertPostPayload {
+export interface PostCreateRequestDTO {
   title: string;
-  content: string;
-  categoryId?: number;
-  imageChanged?: boolean;
+  description: string;
 }
 
-export interface PostDetail {
-  id: number;
-  title: string;
-  content: string;
-  imageUrl?: string;
-  likeCount: number;
+export interface LikesToggleResponseDTO {
   liked: boolean;
-  author: { id: number; name: string; avatarUrl?: string };
-  createdAt: string;
-  updatedAt: string;
+  likeCount: number;
 }
 
-export interface PostListResponse {
-  items: PostDetail[];
-  total: number;
-  page: number;
-  size: number;
+export interface Cursor {
+  sort: string;
+  cursorTime: string | null;
+  cursorId: number | null;
+  cursorLike: number | null;
 }
 
-// Photo 관련 타입
-export interface Photo {
+export interface PostResponseDTO {
   postId: number;
   title: string;
   thumbnailUrl: string;
@@ -46,15 +23,29 @@ export interface Photo {
   likedByMe: boolean;
 }
 
-export interface NextCursor {
-  sort: string;
-  cursorTime: string | null;
-  cursorId: number | null;
-  cursorLike?: number | null;
+export interface PostFeedResponseDTO {
+  items: PostResponseDTO[];
+  nextCursor: Cursor | null;
+  hasNext: boolean;
 }
 
-export interface PhotoResponse {
-  items: Photo[];
-  nextCursor: NextCursor | null;
-  hasNext: boolean;
+export interface PostDetailResponseDTO {
+  postId: number;
+  authorId: number;
+  authorNickname: string;
+  authorProfileImageUrl: string;
+  title: string;
+  description: string;
+  originalUrl: string;
+  likeCount: number;
+  likedByMe: boolean;
+  createdAt: string;
+}
+
+export interface PostListParams {
+  sort?: string;
+  cursorTime?: string;
+  cursorId?: number;
+  cursorLike?: number;
+  size?: number;
 }

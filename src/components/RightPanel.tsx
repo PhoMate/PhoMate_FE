@@ -18,6 +18,7 @@ import { PhotoDetail } from '../types';
 type RightPanelProps = {
     isOpen: boolean;
     onClose: () => void;
+    isGuest?: boolean;
     selectedPhoto?: PhotoDetail | null;
     onUpdatePhoto?: (newUrl: string) => void;
 };
@@ -54,7 +55,7 @@ const MessageItem = ({ msg }: { msg: Message }) => {
     );
 };
 
-export default function RightPanel({ isOpen, onClose, selectedPhoto, onUpdatePhoto }: RightPanelProps) {
+export default function RightPanel({ isOpen, onClose, isGuest = false, selectedPhoto, onUpdatePhoto }: RightPanelProps) {
     const [activeTab, setActiveTab] = useState<TabType>('search');
     const [inputMessage, setInputMessage] = useState('');
     const panelClass = `right-panel ${isOpen ? 'open' : 'closed'}`;
@@ -63,7 +64,7 @@ export default function RightPanel({ isOpen, onClose, selectedPhoto, onUpdatePho
         { id: 'm-1', role: 'bot', content: '무엇을 도와드릴까요?', streaming: false, type: 'text' },
     ]);
     const [isStreaming, setIsStreaming] = useState(false);
-    const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+    const [chatSessionId, setChatSessionId] = useState<number | null>(null);
 
     const [editSessionId, setEditSessionId] = useState<number | null>(null);
     const [editChatSessionId, setEditChatSessionId] = useState<number | null>(null);
@@ -157,68 +158,96 @@ export default function RightPanel({ isOpen, onClose, selectedPhoto, onUpdatePho
     };
 
     const processSearchMessage = async (text: string) => {
+        const token = localStorage.getItem('accessToken');
+        if (isGuest || !token) {
+            setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'bot', content: '로그인 후 사용할 수 있습니다.', streaming: false, type: 'text' }]);
+            return;
+        }
+
         setIsStreaming(true);
         const botMessageId = crypto.randomUUID();
         setMessages(prev => [...prev, { id: botMessageId, role: 'bot', content: '', streaming: true, type: 'text' }]);
 
         let fullText = '';
         let abort: (() => void) | undefined;
+        let lastUpdateTime = Date.now();
+        
         const timeoutId = window.setTimeout(() => {
+            console.warn('Stream timeout after 60s');
             abort?.();
+            setMessages(prev => prev.map(m =>
+                m.id === botMessageId ? { 
+                    ...m, 
+                    streaming: false, 
+                    content: fullText || '응답 시간이 초과되었습니다.' 
+                } : m
+            ));
             setIsStreaming(false);
-        }, 30000);
+        }, 60000);
 
         try {
             let newSessionId = chatSessionId;
             if (!chatSessionId) {
-                const res = await startChatSession({ message: text });
-                setChatSessionId(res.sessionId);
-                setMessages(prev => prev.map(m => m.id === botMessageId ? { ...m, content: res.message, streaming: false } : m));
-                setIsStreaming(false);
-            } else {
-                let fullText = '';
-                streamChatSearch(
-                    { sessionId: chatSessionId, query: text },
-                    {
-                        onDelta: (delta) => {
-                            fullText += delta;
-                            setMessages(prev => prev.map(m => m.id === botMessageId ? { ...m, content: fullText, streaming: true } : m));
-                        },
-                        onResult: (result) => console.log(result),
-                        onError: () => setIsStreaming(false),
-                        onComplete: () => {
-                            setMessages(prev => prev.map(m => m.id === botMessageId ? { ...m, content: fullText, streaming: false } : m));
-                            setIsStreaming(false);
-                        }
-                    }
-                );
+                console.log('Creating new session...');
+                const res = await startChatSession();
+                console.log('Session created:', res);
+                
+                if (typeof res === 'number') {
+                    newSessionId = res;
+                } else {
+                    newSessionId = res.sessionId || res.chatSessionId || res;
+                }
+                setChatSessionId(newSessionId);
             }
 
             if (!newSessionId) throw new Error('세션 생성 실패');
 
+            console.log('Starting stream with session:', newSessionId);
+            let chunkCount = 0;
+
             abort = streamChatSearch(
-                { sessionId: String(newSessionId), query: text },
+                { chatSessionId: newSessionId, userText: text },
                 {
                     onDelta: (delta) => {
+                        chunkCount++;
+                        lastUpdateTime = Date.now();
                         fullText += delta;
+                        console.log(`Chunk ${chunkCount}:`, delta.substring(0, 50));
+                        
                         setMessages(prev => prev.map(m =>
                             m.id === botMessageId ? { ...m, content: fullText, streaming: true } : m
                         ));
                     },
                     onResult: (result) => {
-                        console.log('Search result:', result);
+                        console.log('Search result received:', result);
                     },
                     onError: (err) => {
                         clearTimeout(timeoutId);
+                        const elapsedTime = Date.now() - lastUpdateTime;
+                        console.error('Stream error after', elapsedTime, 'ms:', err);
+                        console.log('Received chunks:', chunkCount);
+                        console.log('Full text so far:', fullText);
+                        
+                        const errorMsg = fullText 
+                            ? fullText + '\n\n(연결이 중단되었습니다)'
+                            : '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.';
+                        
                         setMessages(prev => prev.map(m =>
-                            m.id === botMessageId ? { ...m, streaming: false, content: '오류: ' + err } : m
+                            m.id === botMessageId ? { ...m, streaming: false, content: errorMsg } : m
                         ));
                         setIsStreaming(false);
                     },
                     onComplete: () => {
                         clearTimeout(timeoutId);
+                        console.log('Stream completed. Total chunks:', chunkCount);
+                        console.log('Final text length:', fullText.length);
+                        
                         setMessages(prev => prev.map(m =>
-                            m.id === botMessageId ? { ...m, streaming: false } : m
+                            m.id === botMessageId ? { 
+                                ...m, 
+                                streaming: false, 
+                                content: fullText || '응답을 받지 못했습니다.' 
+                            } : m
                         ));
                         setIsStreaming(false);
                     }
@@ -226,8 +255,13 @@ export default function RightPanel({ isOpen, onClose, selectedPhoto, onUpdatePho
             );
         } catch (err) {
             clearTimeout(timeoutId);
+            console.error('Error in processSearchMessage:', err);
             setMessages(prev => prev.map(m =>
-                m.id === botMessageId ? { ...m, streaming: false, content: '오류 발생' } : m
+                m.id === botMessageId ? { 
+                    ...m, 
+                    streaming: false, 
+                    content: `오류 발생: ${err instanceof Error ? err.message : '알 수 없는 오류'}` 
+                } : m
             ));
             setIsStreaming(false);
         }
@@ -253,7 +287,7 @@ export default function RightPanel({ isOpen, onClose, selectedPhoto, onUpdatePho
         if (!editSessionId) return;
         try {
             const res = await finalizeEdit(editSessionId);
-            if (onUpdatePhoto) onUpdatePhoto(res.finalUrl);
+            if (onUpdatePhoto) onUpdatePhoto(res.imageUrl);
             alert('저장되었습니다.');
             onClose();
         } catch (e) { alert('저장 실패'); }
