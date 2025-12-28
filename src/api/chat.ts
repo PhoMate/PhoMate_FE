@@ -198,7 +198,7 @@ export async function sendChatEdit(payload: {
  * SSE로 delta 방식
  */
 export function streamChatTest(
-  payload: ChatStreamRequest & { memberId: number },
+  payload: ChatStreamRequest,
   handlers: {
     onDelta?: (delta: string) => void;
     onError?: (error: string) => void;
