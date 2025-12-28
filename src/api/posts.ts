@@ -65,24 +65,13 @@ export async function deletePost(postId: number): Promise<void> {
 }
 
 export async function togglePostLike(postId: number): Promise<LikesToggleResponseDTO> {
-  const token = localStorage.getItem('accessToken') || '';
   const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/likes`, {
     method: 'POST',
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
     credentials: 'include',
   });
   if (!res.ok) throw new Error('게시글 좋아요 토글 실패');
   return res.json();
 }
 
-/**
- * 특정 회원의 사진 목록 조회
- * GET /api/posts?memberId={memberId}
- */
-export async function getMemberPhotos(memberId: string): Promise<PostFeedResponseDTO> {
-  return fetchPosts({ memberId } as any);
-}
-
 // cursor 기반 목록: fetchPosts로 통일
+
