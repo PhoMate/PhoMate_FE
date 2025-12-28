@@ -13,14 +13,14 @@ export async function startChatSession(): Promise<StartSessionResponse> {
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${localStorage.getItem('accessToken') || ''}`,
-    },
+    },  
   });
 
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   
   const data = await res.json();
-  console.log('Session response:', data);
-  return data;
+  console.log('Session response:', data); // 실제 응답 확인
+  return data; // { sessionId: number }
 }
 
 /**
@@ -86,7 +86,7 @@ export function streamChatSearch(
 
         hasData = true;
         const chunk = decoder.decode(value, { stream: true });
-        console.log('Raw chunk:', JSON.stringify(chunk));
+        console.log('Raw chunk:', JSON.stringify(chunk)); // 디버깅: 실제 받은 데이터 확인
         
         buffer += chunk;
         const lines = buffer.split('\n');
@@ -96,7 +96,7 @@ export function streamChatSearch(
           const trimmed = line.trim();
           if (!trimmed) continue;
 
-          console.log('Processing line:', JSON.stringify(trimmed));
+          console.log('Processing line:', JSON.stringify(trimmed)); // 디버깅
 
           if (trimmed.startsWith('data: ')) {
             const content = trimmed.slice(6).trim();
@@ -107,16 +107,20 @@ export function streamChatSearch(
               return;
             }
 
+            // JSON 형태인지 확인
             if (content.startsWith('{') || content.startsWith('[')) {
               try {
                 const parsed = JSON.parse(content);
                 
+                // 검색 결과 객체 처리
                 if (parsed.postId || parsed.results) {
                   handlers.onResult?.(parsed);
                 }
+                // delta 필드가 있으면 텍스트로 처리
                 else if (parsed.delta !== undefined) {
                   handlers.onDelta?.(parsed.delta);
                 }
+                // 기타 JSON은 그냥 onResult로
                 else {
                   handlers.onResult?.(parsed);
                 }
@@ -125,6 +129,7 @@ export function streamChatSearch(
                 handlers.onDelta?.(content);
               }
             } else {
+              // 일반 텍스트는 delta로 전달
               handlers.onDelta?.(content);
             }
           }
@@ -197,7 +202,7 @@ export async function sendChatEdit(payload: {
  * SSE로 delta 방식
  */
 export function streamChatTest(
-  payload: ChatStreamRequest,
+  payload: ChatStreamRequest & { memberId: number },
   handlers: {
     onDelta?: (delta: string) => void;
     onError?: (error: string) => void;
@@ -248,4 +253,28 @@ export function streamChatTest(
     });
 
   return () => controller.abort();
+}
+
+async function readStream(reader: ReadableStreamDefaultReader<Uint8Array>, handlers: { onDelta?: (delta: string) => void; onError?: (error: string) => void; onComplete?: () => void; }) {
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      if (!line.trim() || !line.startsWith('data: ')) continue;
+      try {
+        const delta = line.slice(6).trim();
+        handlers.onDelta?.(delta);
+      } catch (e) {
+        console.error('SSE parse error', e);
+      }
+    }
+  }
+  handlers.onComplete?.();
 }
