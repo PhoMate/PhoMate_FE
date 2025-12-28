@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import LoginPage from './components/LoginPage';
 import OAuthGoogleCallbackPage from './pages/OAuthGoogleCallbackPage';
 import Sidebar from './components/Sidebar';
-import RightPanel from './components/RightPanel';
+import RightPanel from './components/RightPanel/RightPanel';
 import FeedPage from './components/FeedPage';
 import PhotoDetailModal from './components/PhotoDetailModal';
 import ProfilePage from './components/ProfilePage';
@@ -131,7 +131,6 @@ function MainApp({ isGuest }: MainAppProps) {
                         id: Number(targetUser.id), 
                         name: targetUser.name,
                         profileUrl: targetUser.profileUrl,
-                        description: '안녕하세요, 반가워요!',
                         isFollowed: targetUser.isFollowed 
                     }}
                     onPhotoSelect={handlePhotoSelect}
