@@ -1,7 +1,7 @@
 .right-panel {
     width: 400px;
     min-width: 360px;
-    background-color: #fff9c4;
+    background-color: #ffdeff;
     display: flex;
     flex-direction: column;
     box-shadow: -5px 0 20px rgba(0, 0, 0, 0.05);
@@ -144,7 +144,7 @@
 }
 
 .message-user {
-    background-color: #ffd54f;
+    background-color: #e495e4;
     color: #5d4037;
     border-bottom-right-radius: 4px;
     font-weight: 500;
@@ -193,7 +193,7 @@
 }
 
 .chat-input:focus {
-    border-color: #ffe082;
+    border-color: #e495e4;
 }
 
 .send-btn {
@@ -243,8 +243,8 @@
 }
 
 .control-btn:hover {
-    background-color: #fff9c4;
-    border-color: #ffe082;
+    background-color: #ffdeff;
+    border-color: #e495e4;
     transform: translateY(-2px);
     color: #5d4037;
 }
@@ -252,7 +252,7 @@
 .apply-btn {
     margin-top: 10px;
     width: 100%;
-    background: #ffd54f;
+    background: #e495e4;
     color: #5d4037;
     border: none;
     border-radius: 14px;
@@ -264,7 +264,7 @@
 }
 
 .apply-btn:hover {
-    background: #ffca28;
+    background: #e495e4;
     transform: translateY(-1px);
 }
 

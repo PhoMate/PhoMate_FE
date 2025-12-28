@@ -51,7 +51,7 @@
 
 /* 저장(완료) 버튼 */
 .editor-btn-save {
-    background-color: #FFC107;
+    background-color: #e495e4;
     border: none;
     color: #000;
     padding: 8px 20px;
@@ -66,7 +66,7 @@
 }
 
 .editor-btn-save:hover {
-    background-color: #ffca28;
+    background-color: #e495e4;
     transform: translateY(-1px);
 }
 

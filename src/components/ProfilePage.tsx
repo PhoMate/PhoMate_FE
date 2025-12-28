@@ -11,10 +11,8 @@ type UserInfo = {
     name: string;
     profileUrl: string;
     isFollowed?: boolean;
-    // description 제거
 };
 
-// 🔥 [수정] 서버 응답과 100% 일치시킴 (소개글 제거)
 type MemberProfileResponse = {
     memberId: number;
     nickname: string;
@@ -40,8 +38,8 @@ type ProfilePageProps = {
     userInfo?: UserInfo;
     isMe?: boolean;
     isPanelOpen?: boolean;
-    onEditPhoto?: (photo: Photo) => void;
-    onDeletePhoto?: (photoId: string) => void;
+    onEditClick?: (photo: Photo) => void; // App.tsx의 handleEditRequest와 연결
+    onDeleteClick?: (photo: Photo) => void; // App.tsx의 handleDeletePhoto와 연결
 };
 
 export default function ProfilePage({ 
@@ -51,8 +49,8 @@ export default function ProfilePage({
     onBack,
     isMe = true,
     isPanelOpen = false,
-    onEditPhoto,
-    onDeletePhoto
+    onEditClick,
+    onDeleteClick
 }: ProfilePageProps) {
 
     const [isFollowed, setIsFollowed] = useState(userInfo?.isFollowed || false);
@@ -85,7 +83,6 @@ export default function ProfilePage({
                         id: profileData.memberId,
                         name: profileData.nickname,
                         profileUrl: profileData.profileImageUrl,
-                        // description 관련 코드 삭제 완료
                     });
 
                     // (2) 사진 목록 가져오기
@@ -95,11 +92,11 @@ export default function ProfilePage({
                         const photoList = data.items.map((item) => ({
                             id: String(item.postId),
                             thumbnailUrl: item.thumbnailUrl,
-                            originalUrl: item.thumbnailUrl,
+                            originalUrl: item.thumbnailUrl, // 명세에 맞춰 필요한 경우 수정
                             title: item.title,
                             likeCount: item.likeCount,
                             likedByMe: item.likedByMe,
-                            createdAt: new Date().toISOString(), // 날짜 정보가 없으면 현재 시간
+                            createdAt: new Date().toISOString(),
                         } as Photo));
                         setPhotos(photoList);
                     }
@@ -149,7 +146,6 @@ export default function ProfilePage({
                     <img src={displayProfile.img} alt="Profile" className="profile-image" />
                 </div>
                 <div className="profile-text-info">
-                    {/* 이름만 표시하고 소개글(<p>)은 삭제 */}
                     <h2>{displayProfile.name}</h2>
                 </div>
                 
@@ -183,12 +179,12 @@ export default function ProfilePage({
                                 photo={photo} 
                                 onClick={() => onPhotoSelect(photo)}
                                 isMe={isMe}
-                                onEditClick={() => onEditPhoto?.(photo)}
-                                onDeleteClick={() => onDeletePhoto?.(photo.id)}
+                                onEditClick={() => onEditClick?.(photo)}
+                                onDeleteClick={() => onDeleteClick?.(photo)}
                             />
                         ))
                     ) : (
-                        <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: '#888' }}>
+                        <div className="empty-gallery">
                             아직 업로드한 사진이 없습니다.
                         </div>
                     )}

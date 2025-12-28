@@ -49,7 +49,7 @@
 .retry-btn {
     margin-top: 10px;
     padding: 8px 16px;
-    background: #FFD54F;
+    background: #e495e4;
     color: white;
     border: none;
     border-radius: 6px;
@@ -59,7 +59,7 @@
 }
 
 .retry-btn:hover {
-    background: #FBC02D;
+    background: #e495e4;
 }
 
 .feed-observer {
