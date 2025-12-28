@@ -172,23 +172,8 @@ export async function sendChatEdit(payload: {
   chatSessionId: number;
   editSessionId: number;
   userText: string;
-}): Promise<ChatSendResponse> {
-  const query = new URLSearchParams({
-    chatSessionId: String(payload.chatSessionId),
-    editSessionId: String(payload.editSessionId),
-    userText: payload.userText,
-  }).toString();
-  
-  const res = await fetch(`${API_BASE_URL}/api/chat/send-edit?${query}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem('accessToken') || ''}`,
-    },
-    credentials: 'include',
-  });
-  
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+}) {
+  return apiClient.post('/api/chat/send-edit', payload);
 }
 
 /**
