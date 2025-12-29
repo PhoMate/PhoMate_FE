@@ -30,6 +30,7 @@ function MainApp({ isGuest }: MainAppProps) {
     // 🔥 이 state가 문제였습니다. 닫을 때 얘를 비워줘야 합니다.
     const [photoToEdit, setPhotoToEdit] = useState<PhotoDetail | null>(null); 
     const [editingPost, setEditingPost] = useState<PhotoDetail | null>(null);
+    const [autoSearchQuery, setAutoSearchQuery] = useState<string | undefined>(undefined);
 
     const handleNavClick = (nav: string) => {
         if (isGuest && nav !== 'home') {
@@ -108,6 +109,16 @@ function MainApp({ isGuest }: MainAppProps) {
         setIsRightPanelOpen(true);
     };
 
+    const handleAiSearchRequest = (searchQuery: string) => {
+        if (isGuest) {
+            alert('로그인 후 검색 기능을 사용할 수 있습니다.');
+            return;
+        }
+        setAutoSearchQuery(searchQuery);
+        setIsDetailModalOpen(false);
+        setIsRightPanelOpen(true);
+    };
+
     const handleEditRequest = (photo: PhotoDetail) => {
         setEditingPost(photo);
         setActiveNav('upload');
@@ -144,6 +155,7 @@ function MainApp({ isGuest }: MainAppProps) {
     const handleCloseRightPanel = () => {
         setIsRightPanelOpen(false); // 1. 패널 닫기
         setPhotoToEdit(null);       // 2. 편집 중이던 사진 정보 비우기 (초기화)
+        setAutoSearchQuery(undefined); // 3. 자동 검색 쿼리 초기화
     };
 
     return (
@@ -212,6 +224,7 @@ function MainApp({ isGuest }: MainAppProps) {
                 onUpdatePhoto={(newUrl) => {
                     console.log("새 이미지:", newUrl);
                 }}
+                autoSearchQuery={autoSearchQuery}
             />
 
             <button
@@ -226,7 +239,7 @@ function MainApp({ isGuest }: MainAppProps) {
                 isOpen={isDetailModalOpen}
                 onClose={() => setIsDetailModalOpen(false)}
                 onAiEdit={handleAiEditRequest}
-                onAiSearch={() => setIsRightPanelOpen(true)}
+                onAiSearch={handleAiSearchRequest}
                 onAuthorClick={handleAuthorClick}
             />
         </div>

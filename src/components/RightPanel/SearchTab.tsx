@@ -1,12 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { startChatSession, streamChatSearch } from '../../api/chat';
 import MessageItem, { Message } from './MessageItem';
 
 type SearchTabProps = {
     isGuest: boolean;
+    autoSearchQuery?: string;
 };
 
-export default function SearchTab({ isGuest }: SearchTabProps) {
+export default function SearchTab({ isGuest, autoSearchQuery }: SearchTabProps) {
     const [messages, setMessages] = useState<Message[]>([
         { id: 'm-1', role: 'bot', content: '무엇을 도와드릴까요?', streaming: false, type: 'text' },
     ]);
@@ -16,14 +17,15 @@ export default function SearchTab({ isGuest }: SearchTabProps) {
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const stopRef = useRef<null | (() => void)>(null);
     const runningRef = useRef(false);
+    const autoSearchTriggeredRef = useRef(false);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    const handleSendMessage = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const text = inputMessage.trim();
+    const handleSendMessage = useCallback(async (e?: React.FormEvent | null, customText?: string) => {
+        if (e) e.preventDefault();
+        const text = (customText || inputMessage).trim();
         if (!text) return;
         // 이미 스트림 실행 중이면 중복 방지
         if (runningRef.current) return;
@@ -36,7 +38,9 @@ export default function SearchTab({ isGuest }: SearchTabProps) {
             type: 'text',
         };
         setMessages(prev => [...prev, userMessage]);
-        setInputMessage('');
+        if (!customText) {
+            setInputMessage('');
+        }
 
         const token = localStorage.getItem('accessToken');
         if (isGuest || !token) {
@@ -138,7 +142,23 @@ export default function SearchTab({ isGuest }: SearchTabProps) {
             stopRef.current = null;
             setIsStreaming(false);
         }
-    };
+    }, [inputMessage, isStreaming, chatSessionId, isGuest]);
+
+    // autoSearchQuery가 전달되면 자동으로 검색 수행
+    useEffect(() => {
+        if (autoSearchQuery && !autoSearchTriggeredRef.current && !isStreaming) {
+            autoSearchTriggeredRef.current = true;
+            // handleSendMessage를 직접 호출하여 검색 실행
+            handleSendMessage(null, autoSearchQuery);
+        }
+    }, [autoSearchQuery, isStreaming, handleSendMessage]);
+
+    // 컴포넌트 언마운트 또는 autoSearchQuery 초기화 시 flag 리셋
+    useEffect(() => {
+        return () => {
+            autoSearchTriggeredRef.current = false;
+        };
+    }, [autoSearchQuery]);
 
     useEffect(() => {
         return () => {

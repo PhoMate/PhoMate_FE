@@ -12,11 +12,12 @@ type RightPanelProps = {
     isGuest?: boolean;
     selectedPhoto?: PhotoDetail | null;
     onUpdatePhoto?: (newUrl: string) => void;
+    autoSearchQuery?: string;
 };
 
 type TabType = 'search' | 'edit';
 
-export default function RightPanel({ isOpen, onClose, isGuest = false, selectedPhoto, onUpdatePhoto }: RightPanelProps) {
+export default function RightPanel({ isOpen, onClose, isGuest = false, selectedPhoto, onUpdatePhoto, autoSearchQuery }: RightPanelProps) {
     // 기본 탭은 'search'로 설정하여 사진이 없을 땐 항상 검색부터 나오게 함
     const [activeTab, setActiveTab] = useState<TabType>('search');
     const [mountKey, setMountKey] = useState(0);
@@ -57,7 +58,7 @@ export default function RightPanel({ isOpen, onClose, isGuest = false, selectedP
                 {isOpen && (
                     <div key={mountKey} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                         {activeTab === 'search' ? (
-                            <SearchTab isGuest={isGuest} />
+                            <SearchTab isGuest={isGuest} autoSearchQuery={autoSearchQuery} />
                         ) : (
                             selectedPhoto ? (
                                 <EditTab 

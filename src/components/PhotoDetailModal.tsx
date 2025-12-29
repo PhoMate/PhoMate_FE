@@ -9,7 +9,7 @@ type PhotoDetailModalProps = {
     isOpen: boolean;
     onClose: () => void;
     onAiEdit?: (photo: PhotoDetail) => void;
-    onAiSearch?: (photo: PhotoDetail) => void;
+    onAiSearch?: (searchQuery: string) => void;
     onAuthorClick?: (authorId: number) => void;
     currentMemberId?: string; 
 };
@@ -143,7 +143,7 @@ export default function PhotoDetailModal({
                             </button>
                             <button
                                 className="action-btn ai-search-btn"
-                                onClick={() => onAiSearch?.(photo)}
+                                onClick={() => onAiSearch?.(photo.title || '')}
                             >
                                 <Search className="icon" />
                                 <span>유사 사진 찾기</span>
