@@ -233,7 +233,8 @@ export default function App() {
         const token = localStorage.getItem('accessToken');
         const guest = localStorage.getItem('isGuest') === 'true';
         setIsLoggedIn(!!token);
-        setIsGuest(guest);
+        // 토큰이 있으면 게스트로 간주하지 않음
+        setIsGuest(guest && !token);
         setIsLoading(false);
     }, []);
 

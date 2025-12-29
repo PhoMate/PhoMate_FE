@@ -155,6 +155,8 @@ export function saveTokens(data: AuthResponse): void {
   localStorage.setItem('accessToken', data.accessToken);
   localStorage.setItem('refreshToken', data.refreshToken);
   localStorage.setItem('memberId', data.memberId.toString());
+  // 실사용자 로그인 시 게스트 모드 해제
+  localStorage.removeItem('isGuest');
 }
 
 /**
