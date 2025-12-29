@@ -1,5 +1,6 @@
 import * as apiClient from './apiClient';
 import type { GoogleLoginRequestDTO, GoogleLoginResponseDTO, RefreshRequestDTO } from '../types/auth';
+import { clearPkceVerifier } from '../utils/pkce';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -34,52 +35,33 @@ export async function googleLogin(params: GoogleLoginRequestDTO): Promise<Google
   } else {
     console.log('googleLogin: codeVerifier', params.codeVerifier);
   }
-
-  const res = await fetch(`${API_BASE_URL}/api/auth/google`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    redirect: 'manual', // 리다이렉트 여부 확인용
-    body: JSON.stringify(params),
-  });
-
-  console.log('redirected?', res.redirected, 'url:', res.url, 'status:', res.status);
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Google 로그인 실패 (${res.status}) ${text || ''}`);
-  }
-  // 응답 파싱 강화: JSON 우선, 빈 응답은 오류로 처리
-  const contentType = res.headers.get('content-type') || '';
   try {
-    let payload: any = null;
-    if (contentType.includes('application/json')) {
-      payload = await res.json();
-    } else {
-      const text = await res.text();
-      payload = text ? JSON.parse(text) : null;
-    }
+    const payload = await apiClient.post<GoogleLoginResponseDTO | { data: GoogleLoginResponseDTO }>(
+      '/api/auth/google',
+      params
+    );
 
-    if (!payload) {
-      throw new Error('로그인 응답이 비어 있습니다.');
-    }
-
-    // 래핑된 형태 지원: { data: { memberId, accessToken, refreshToken } }
-    const data = payload.data?.accessToken ? payload.data : payload;
+    const data: any = (payload as any)?.data ?? payload;
     const result: GoogleLoginResponseDTO = {
       memberId: Number(data.memberId),
       accessToken: String(data.accessToken || ''),
       refreshToken: String(data.refreshToken || ''),
     };
 
-    if (!result.accessToken || !result.refreshToken) {
-      throw new Error('토큰이 응답에 없습니다.');
+    if (!result.accessToken) {
+      throw new Error('액세스 토큰이 응답에 없습니다.');
     }
+
+    saveTokens({
+      memberId: result.memberId,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken || getRefreshToken() || '',
+    });
 
     return result;
   } catch (e: any) {
     const msg = e?.message || String(e);
-    console.error('googleLogin parse error:', msg);
+    console.error('googleLogin error:', msg);
     throw new Error(msg);
   }
 }
@@ -116,9 +98,8 @@ export async function reissueToken(
     accessToken: data.accessToken,
     refreshToken: data.refreshToken,
   };
-
-  // 받은 토큰을 저장하여 이후 호출에서 사용 가능하게 함
-  saveTokens(tokens);
+  // 저장 및 반환 누락 수정
+  saveTokens(tokens as any);
   return tokens;
 }
 
@@ -129,8 +110,9 @@ export function logout(): void {
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('memberId');
+  localStorage.removeItem('isGuest');
   // PKCE verifier 키 정리
-  sessionStorage.removeItem('pkce_verifier');
+  clearPkceVerifier();
   sessionStorage.removeItem('pkce_code_verifier'); // 레거시 키도 함께 제거
 }
 
@@ -155,6 +137,8 @@ export function saveTokens(data: AuthResponse): void {
   localStorage.setItem('accessToken', data.accessToken);
   localStorage.setItem('refreshToken', data.refreshToken);
   localStorage.setItem('memberId', data.memberId.toString());
+  // 실사용자 로그인 시 게스트 모드 해제
+  localStorage.removeItem('isGuest');
 }
 
 /**

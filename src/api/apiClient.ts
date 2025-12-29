@@ -109,7 +109,6 @@ export async function publicGet<T>(endpoint: string): Promise<T> {
     headers: {
       'Content-Type': 'application/json',
     },
-    credentials: 'include',
   });
 
   if (!response.ok) {
@@ -122,10 +121,13 @@ export async function publicGet<T>(endpoint: string): Promise<T> {
 
 // 쿠키 기반 인증으로 GET (Authorization 헤더 없이, credentials 포함)
 export async function cookieGet<T>(endpoint: string): Promise<T> {
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   });
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
