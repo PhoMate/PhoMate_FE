@@ -2,10 +2,14 @@
  * Google OAuth 설정
  */
 
+import { SITE_ORIGIN } from './env';
+
 export const GOOGLE_CONFIG = {
   clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
   authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-  redirectUri: import.meta.env.VITE_GOOGLE_REDIRECT_URI, // 예: http://localhost:5173/oauth/google/callback
+  redirectUri:
+    import.meta.env.VITE_GOOGLE_REDIRECT_URI ||
+    `${SITE_ORIGIN}/oauth/google/callback`,
 };
 
 export function getGoogleAuthUrl(codeChallenge: string): string {

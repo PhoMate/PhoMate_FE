@@ -1,8 +1,7 @@
 import * as apiClient from './apiClient';
 import type { GoogleLoginRequestDTO, GoogleLoginResponseDTO, RefreshRequestDTO } from '../types/auth';
 import { clearPkceVerifier } from '../utils/pkce';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { API_BASE_URL } from '../config/env';
 
 // ============ 타입 정의 ============
 
