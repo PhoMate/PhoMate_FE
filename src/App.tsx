@@ -127,6 +127,25 @@ function MainApp() {
 }
 
 export default function App() {
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [isGuest, setIsGuest] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const token = localStorage.getItem('accessToken');
+        const guest = localStorage.getItem('isGuest') === 'true';
+        setIsLoggedIn(!!token);
+        // 토큰이 있으면 게스트로 간주하지 않음
+        setIsGuest(guest && !token);
+        setIsLoading(false);
+    }, []);
+
+    if (isLoading) {
+        return <div>로딩 중...</div>;
+    }
+
+    const isAuthenticated = isLoggedIn || isGuest;
+
     return (
         <BrowserRouter>
             <Routes>

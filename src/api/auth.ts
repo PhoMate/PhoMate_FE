@@ -77,3 +77,28 @@ export async function logout(): Promise<void> {
 export function getAccessToken() {
   return localStorage.getItem('accessToken') || '';
 }
+
+/**
+ * 저장된 refresh 토큰 가져오기
+ */
+export function getRefreshToken(): string {
+  return localStorage.getItem('refreshToken') || '';
+}
+
+/**
+ * 토큰 저장
+ */
+export function saveTokens(data: AuthResponse): void {
+  localStorage.setItem('accessToken', data.accessToken);
+  localStorage.setItem('refreshToken', data.refreshToken);
+  localStorage.setItem('memberId', data.memberId.toString());
+  // 실사용자 로그인 시 게스트 모드 해제
+  localStorage.removeItem('isGuest');
+}
+
+/**
+ * 로그인 여부 확인
+ */
+export function isLoggedIn(): boolean {
+  return !!localStorage.getItem('accessToken');
+}
