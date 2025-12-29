@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import LoginPage from './components/LoginPage';
 import OAuthGoogleCallbackPage from './pages/OAuthGoogleCallbackPage';
+import { logout as authLogout } from './api/auth';
 import Sidebar from './components/Sidebar';
 import RightPanel from './components/RightPanel/RightPanel';
 import FeedPage from './components/FeedPage';
@@ -123,9 +124,9 @@ function MainApp({ isGuest }: MainAppProps) {
     };
 
     const handleLogout = () => {
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.href = '/login';
+        authLogout();
+        // 완전히 페이지 새로고침하여 모든 React 상태 초기화
+        window.location.replace('/login');
     };
 
     useEffect(() => {
@@ -238,11 +239,24 @@ export default function App() {
         setIsLoading(false);
     }, []);
 
+    // localStorage 변경 감지 (다른 탭/창에서 로그인/로그아웃 시)
+    useEffect(() => {
+        const handleStorageChange = () => {
+            const token = localStorage.getItem('accessToken');
+            const guest = localStorage.getItem('isGuest') === 'true';
+            setIsLoggedIn(!!token);
+            setIsGuest(guest && !token);
+        };
+        
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, []);
+
     if (isLoading) {
         return <div>로딩 중...</div>;
     }
 
-    const isAuthenticated = isLoggedIn || isGuest;
+    const isAuthenticated = isLoggedIn;
 
     return (
         <BrowserRouter>
@@ -251,7 +265,11 @@ export default function App() {
                 <Route path="/oauth/google/callback" element={<OAuthGoogleCallbackPage />} />
                 <Route 
                     path="/" 
-                    element={isAuthenticated ? <MainApp isGuest={isGuest} /> : <Navigate to="/login" replace />} 
+                    element={
+                        isLoggedIn
+                          ? <MainApp isGuest={false} />
+                          : (isGuest ? <MainApp isGuest={true} /> : <Navigate to="/login" replace />)
+                    } 
                 />
                 <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />} />
             </Routes>
