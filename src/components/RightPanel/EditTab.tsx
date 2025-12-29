@@ -40,9 +40,10 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
 
     // Refs
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
-    const sessionRef = useRef<number | null>(null); 
-    const isSavedRef = useRef(false); 
+    const sessionRef = useRef<number | null>(null); // Cleanup용 세션 ID 추적
+    const isSavedRef = useRef(false); // 저장 완료 여부 추적
 
+    // 메시지 스크롤 자동 이동
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
@@ -57,6 +58,7 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
             try {
                 setIsEditLoading(true);
                 
+                // 1. 편집 및 채팅 세션 시작
                 const editRes = await startEditSession(Number(selectedPhoto.id));
                 const extractedEditId = extractSessionId(editRes);
                 if (!extractedEditId) throw new Error("편집 세션 ID 없음");
@@ -70,6 +72,7 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
                     setEditChatSessionId(newChatSessionId);
                     setCurrentEditUrl(selectedPhoto.originalUrl || selectedPhoto.thumbnailUrl);
                     
+                    // Ref에 ID 저장 (Cleanup 시 사용)
                     sessionRef.current = extractedEditId;
                     console.log(`✅ 세션 시작: Edit=${extractedEditId}`);
                 }
@@ -84,8 +87,11 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
 
         initializeEditSession();
 
+        // Cleanup: 컴포넌트 언마운트 시 저장되지 않은 세션 삭제
         return () => {
             isMounted = false;
+            
+            // "저장(finalize)"을 누르지 않았는데 ID가 있다면 -> 삭제 (쓰레기 정리)
             if (!isSavedRef.current && sessionRef.current) {
                 console.log(`🗑️ 세션 삭제(초기화): ${sessionRef.current}`);
                 deleteEditSession(sessionRef.current).catch(err => console.warn("삭제 실패(이미 없음)", err));
@@ -94,6 +100,7 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedPhoto.id]); 
 
+    // 채팅 전송 핸들러
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         const text = inputMessage.trim();
@@ -127,6 +134,7 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
         }
     };
 
+    // 실행 취소
     const handleUndo = async () => {
         if (!editSessionId) return;
         try {
@@ -135,6 +143,7 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
         } catch (e) { alert('이전 단계가 없습니다.'); }
     };
 
+    // 다시 실행
     const handleRedo = async () => {
         if (!editSessionId) return;
         try {
@@ -143,7 +152,7 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
         } catch (e) { alert('다음 단계가 없습니다.'); }
     };
 
-    // 🔥 [수정] 403 CORS 에러 때문에 fetch를 포기하고 바로 다운로드 링크를 실행하는 버전
+    // 최종 저장 및 종료 (강력해진 버전)
     const handleFinalize = async () => {
         if (!editSessionId) return;
         
@@ -157,26 +166,46 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
             
             if (finalImage) {
                 if (onUpdatePhoto) onUpdatePhoto(finalImage);
+                console.log("다운로드 시도:", finalImage);
 
-                console.log("다운로드 시도(Direct Link):", finalImage);
+                try {
+                    // 2. 우선 fetch를 통한 깔끔한 다운로드 시도 (서버 CORS 해결 시 작동)
+                    const response = await fetch(finalImage, { 
+                        method: 'GET',
+                        mode: 'cors',
+                        cache: 'no-cache' 
+                    });
 
-                // 2. CORS 문제로 fetch가 불가능하므로, 바로 <a> 태그 생성하여 클릭
-                // 주의: CloudFront가 Content-Disposition 헤더를 주지 않으면 새 탭에서 열릴 수 있음
-                const link = document.createElement('a');
-                link.href = finalImage;
-                link.target = "_blank"; // 새 탭에서 열기 (보안 차단 방지)
-                link.rel = "noopener noreferrer";
-                
-                // download 속성은 same-origin(같은 도메인)이 아니면 무시될 수 있음
-                // 하지만 최신 브라우저에서 사용자 개입(클릭)으로 간주되면 다운로드가 될 수도 있음
-                link.download = `phomate_result.jpg`; 
-                
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                    if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
 
-                // 안내 메시지 수정
-                alert('저장이 완료되었습니다. (보안 정책으로 인해 새 탭이 열리면 이미지를 우클릭하여 저장해주세요)');
+                    const blob = await response.blob(); 
+                    const blobUrl = window.URL.createObjectURL(blob);
+                    
+                    const link = document.createElement('a');
+                    link.href = blobUrl;
+                    link.download = `phomate_result_${Date.now()}.jpg`; 
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(blobUrl);
+
+                    alert('이미지가 기기에 저장되었습니다.');
+
+                } catch (error) {
+                    // 3. 실패 시 차선책: 직접 링크 방식 (CORS여도 작동, 단 새 탭이 열릴 수 있음)
+                    console.warn("Fetch 다운로드 실패, 직접 링크로 전환합니다.", error);
+                    
+                    const link = document.createElement('a');
+                    link.href = finalImage;
+                    link.target = "_blank"; 
+                    link.download = `phomate_result.jpg`; 
+                    
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    alert('저장이 완료되었습니다. (보안 정책으로 인해 새 탭이 열리면 우클릭하여 저장해주세요)');
+                }
                 
                 onClose(); 
             }
