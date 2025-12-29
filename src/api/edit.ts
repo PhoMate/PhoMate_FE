@@ -66,19 +66,17 @@ export const redoEdit = (editSessionId: number) => {
 export const finalizeEdit = async (editSessionId: number) => {
   const token = localStorage.getItem('accessToken');
   
-  // URL에서 쿼리 파라미터(?memberId=...)를 완전히 제거했습니다.
   const res = await fetch(`${API_BASE_URL}/api/edits/${editSessionId}/finalize`, { 
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    // 🔥 중요: 데이터가 없더라도 빈 객체라도 전달해야 서버가 400 에러를 뱉지 않는 경우가 많습니다.
+    
     body: JSON.stringify({}) 
   });
 
   if (!res.ok) {
-    // 서버가 왜 400을 뱉었는지 상세 내용을 확인하기 위해 errorText를 로깅합니다.
     const errorText = await res.text();
     console.error("서버 에러 상세:", errorText);
     throw new Error(`저장 실패: ${res.status} - ${errorText}`);

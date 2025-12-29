@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Search, Edit3, Undo, Redo, Save } from 'lucide-react';
 import '../styles/RightPanel.css';
 
-// API
 import { startChatSession, streamChatSearch } from '../api/chat';
 import { 
     startEditSession, 
@@ -15,7 +14,6 @@ import {
 
 import { PhotoDetail } from '../types';
 
-// --- Types ---
 type RightPanelProps = {
     isOpen: boolean;
     onClose: () => void;
@@ -30,7 +28,6 @@ type Message =
     | { id: string; role: 'user' | 'bot'; content: string; streaming?: boolean; type: 'text' }
     | { id: string; role: 'user'; type: 'image'; fileName: string; previewUrl: string };
 
-// --- Sub Component: 메시지 렌더링 (분리함) ---
 const MessageItem = ({ msg }: { msg: Message }) => {
     const isUser = msg.role === 'user';
     
@@ -58,33 +55,22 @@ const MessageItem = ({ msg }: { msg: Message }) => {
     );
 };
 
-// --- Main Component ---
 export default function RightPanel({ isOpen, onClose, isGuest = false, selectedPhoto, onUpdatePhoto }: RightPanelProps) {
-    // 1. UI State
     const [activeTab, setActiveTab] = useState<TabType>('search');
     const [inputMessage, setInputMessage] = useState('');
     const panelClass = `right-panel ${isOpen ? 'open' : 'closed'}`;
-
-    // 2. Chat & Search State
     const [messages, setMessages] = useState<Message[]>([
         { id: 'm-1', role: 'bot', content: '무엇을 도와드릴까요?', streaming: false, type: 'text' },
     ]);
     const [isStreaming, setIsStreaming] = useState(false);
     const [chatSessionId, setChatSessionId] = useState<number | null>(null);
-
-    // 3. Edit State
     const [editSessionId, setEditSessionId] = useState<number | null>(null);
     const [editChatSessionId, setEditChatSessionId] = useState<number | null>(null);
     const [currentEditUrl, setCurrentEditUrl] = useState<string | null>(null);
     const [isDirectEditing, setIsDirectEditing] = useState(false);
     const [isEditLoading, setIsEditLoading] = useState(false);
-
-    // Refs
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-    // --- Effects ---
-
-    // 자동 스크롤
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, activeTab]);
@@ -95,7 +81,6 @@ export default function RightPanel({ isOpen, onClose, isGuest = false, selectedP
         }
     }, [selectedPhoto]);
 
-    // 편집 탭 진입 시 세션 초기화
     useEffect(() => {
         if (activeTab === 'edit' && selectedPhoto && !editSessionId) {
             initializeEditSession();
@@ -106,14 +91,9 @@ export default function RightPanel({ isOpen, onClose, isGuest = false, selectedP
         if (!selectedPhoto) return;
         try {
             setIsEditLoading(true);
-            // 편집 세션 생성
             const editRes = await startEditSession(Number(selectedPhoto.id));
             setEditSessionId(editRes.editSessionId);
             setCurrentEditUrl(selectedPhoto.originalUrl || selectedPhoto.thumbnailUrl);
-
-            // 편집용 챗 세션 생성 (데모용 임시 ID 사용)
-            // const chatRes = await startChatSession(); 
-            // setEditChatSessionId(chatRes.chatSessionId);
             setEditChatSessionId(999); 
         } catch (e) {
             console.error(e);
@@ -123,8 +103,6 @@ export default function RightPanel({ isOpen, onClose, isGuest = false, selectedP
         }
     };
 
-    // --- Handlers ---
-
     const handleTabChange = (tab: TabType) => setActiveTab(tab);
 
     const handleSendMessage = async (e: React.FormEvent) => {
@@ -132,7 +110,6 @@ export default function RightPanel({ isOpen, onClose, isGuest = false, selectedP
         const text = inputMessage.trim();
         if (!text || isStreaming || isEditLoading) return;
 
-        // 유저 메시지 추가
         const userMessage: Message = {
             id: crypto.randomUUID(),
             role: 'user',
@@ -150,23 +127,20 @@ export default function RightPanel({ isOpen, onClose, isGuest = false, selectedP
         }
     };
 
-    // [Logic] 편집 모드 메시지 처리 (AI 수정)
     const processEditMessage = async (text: string) => {
         if (!editSessionId || !editChatSessionId) return;
 
         setIsEditLoading(true);
         const botMsgId = crypto.randomUUID();
         
-        // 봇 로딩 메시지 추가
         setMessages(prev => [...prev, {
             id: botMsgId, role: 'bot', content: 'AI가 이미지를 수정 중입니다...', streaming: true, type: 'text'
         }]);
 
         try {
             const res = await sendChatEdit(editChatSessionId, editSessionId, text);
-            setCurrentEditUrl(res.editedUrl); // 이미지 업데이트
+            setCurrentEditUrl(res.editedUrl); 
             
-            // 봇 응답 업데이트
             setMessages(prev => prev.map(m => m.id === botMsgId ? {
                 ...m, content: res.assistantContent || '수정이 완료되었습니다.', streaming: false
             } : m));
@@ -180,9 +154,7 @@ export default function RightPanel({ isOpen, onClose, isGuest = false, selectedP
         }
     };
 
-    // [Logic] 검색 모드 메시지 처리 (스트리밍)
     const processSearchMessage = async (text: string) => {
-        // 게스트 또는 토큰 없음 → 로그인 필요 안내 후 반환
         const token = localStorage.getItem('accessToken');
         if (isGuest || !token) {
             setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'bot', content: '로그인 후 사용할 수 있습니다.', streaming: false, type: 'text' }]);
@@ -247,7 +219,6 @@ export default function RightPanel({ isOpen, onClose, isGuest = false, selectedP
         }
     };
 
-    // [Logic] 편집 도구 핸들러
     const handleUndo = async () => {
         if (!editSessionId) return;
         try {
@@ -288,11 +259,9 @@ export default function RightPanel({ isOpen, onClose, isGuest = false, selectedP
         }
     };
 
-    // --- Render ---
     return (
         <>
-            <aside className={panelClass} aria-hidden={!isOpen}>
-                {/* 1. Header */}
+            <aside className={panelClass} aria-hidden={!isOpen}>-
                 <div className="chat-header">
                     <div className="tab-buttons">
                         <button
@@ -310,19 +279,15 @@ export default function RightPanel({ isOpen, onClose, isGuest = false, selectedP
                     </div>
                     <button className="close-btn" onClick={onClose}><X className="icon" /></button>
                 </div>
-
-                {/* 2. Content Body */}
-                {activeTab === 'search' ? (
-                    // --- Search Tab ---
+-
+                {activeTab === 'search' ? (-
                     <div className="chat-body">
                         {messages.map(msg => <MessageItem key={msg.id} msg={msg} />)}
                         <div ref={messagesEndRef} />
                     </div>
-                ) : (
-                    // --- Edit Tab ---
+                ) : (-
                     <div className="edit-body" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                        
-                        {/* Preview Area */}
+                        -
                         <div className="edit-preview-area" style={{ flex: 1, position: 'relative', backgroundColor: '#f0f0f0', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {isEditLoading && (
                                 <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
@@ -335,8 +300,7 @@ export default function RightPanel({ isOpen, onClose, isGuest = false, selectedP
                                 <div style={{ color: '#888' }}>편집할 이미지가 없습니다.</div>
                             )}
                         </div>
-
-                        {/* Controls */}
+-
                         <div className="edit-controls" style={{ display: 'flex', gap: '8px', marginBottom: '16px', justifyContent: 'center' }}>
                             <button onClick={handleUndo} className="control-btn" title="실행 취소"><Undo size={20} /></button>
                             <button onClick={handleRedo} className="control-btn" title="다시 실행"><Redo size={20} /></button>
@@ -349,21 +313,18 @@ export default function RightPanel({ isOpen, onClose, isGuest = false, selectedP
                                 <Edit3 size={16} /> 직접 편집
                             </button>
                         </div>
-                        
-                        {/* Chat Log for Edit */}
+                        -
                         <div className="chat-body" style={{ flex: 1, minHeight: '150px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
                             {messages.map(msg => <MessageItem key={msg.id} msg={msg} />)}
                             <div ref={messagesEndRef} />
                         </div>
-
-                        {/* Save Button */}
+-
                         <button onClick={handleFinalize} className="apply-btn" style={{ marginTop: 'auto' }}>
                             <Save size={16} style={{ marginRight: '8px' }}/> 저장 및 종료
                         </button>
                     </div>
                 )}
-
-                {/* 3. Input Area */}
+-
                 <form className="chat-input-area" onSubmit={handleSendMessage}>
                     <div className="input-wrapper">
                         <input

@@ -1,5 +1,3 @@
-// src/declarations.d.ts
-
 declare module '@toast-ui/react-image-editor' {
   import { Component } from 'react';
 

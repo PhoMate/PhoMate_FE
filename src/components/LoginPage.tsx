@@ -10,17 +10,13 @@ export default function LoginPage() {
     try {
       setIsLoading(true);
       
-      // 1. PKCE verifier 생성
       const verifier = generateCodeVerifier();
       savePkceVerifier(verifier);
       
-      // 2. code_challenge 생성
       const challenge = await generateCodeChallenge(verifier);
       
-      // 3. Google 인증 URL 생성
       const authUrl = getGoogleAuthUrl(challenge);
       
-      // 4. Google 로그인 페이지로 이동
       window.location.href = authUrl;
     } catch (error) {
       console.error('Google login failed:', error);

@@ -260,5 +260,5 @@ body {
 }
 
 .floating-chat-btn.with-panel {
-  right: 400px; /* 패널이 열려 있을 때 버튼이 덮이지 않도록 살짝 왼쪽으로 */
+  right: 400px;
 }

@@ -7,9 +7,6 @@ type ProtectedActionProps = {
   fallback?: React.ReactNode;
 };
 
-/**
- * 로그인 필요한 기능을 감싸는 컴포넌트
- */
 export function ProtectedAction({ children, fallback }: ProtectedActionProps) {
   const { isLoggedIn } = useAuth();
 

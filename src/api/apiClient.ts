@@ -119,7 +119,6 @@ export async function publicGet<T>(endpoint: string): Promise<T> {
   return response.json();
 }
 
-// 쿠키 기반 인증으로 GET (Authorization 헤더 없이, credentials 포함)
 export async function cookieGet<T>(endpoint: string): Promise<T> {
   const token = getAccessToken();
   const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -136,7 +135,6 @@ export async function cookieGet<T>(endpoint: string): Promise<T> {
   return response.json();
 }
 
-// ============ SSE 스트리밍 (공용) ============
 
 export function createSSEStream(
   endpoint: string,

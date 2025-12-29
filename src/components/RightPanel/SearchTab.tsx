@@ -27,7 +27,6 @@ export default function SearchTab({ isGuest, autoSearchQuery }: SearchTabProps) 
         if (e) e.preventDefault();
         const text = (customText || inputMessage).trim();
         if (!text) return;
-        // 이미 스트림 실행 중이면 중복 방지
         if (runningRef.current) return;
 
         const userMessage: Message = {
@@ -48,7 +47,6 @@ export default function SearchTab({ isGuest, autoSearchQuery }: SearchTabProps) 
             return;
         }
 
-        // 기존 스트림이 남아있으면 종료
         stopRef.current?.();
         stopRef.current = null;
 
@@ -104,11 +102,9 @@ export default function SearchTab({ isGuest, autoSearchQuery }: SearchTabProps) 
                         ));
                     },
                     onResult: (data: any) => {
-                        // 스트림 결과를 메인 피드로 전달
                         const items = extractItems(data);
                         if (items.length > 0) {
                             dispatchFeedResults({ items, query: text });
-                            // UI 안내: 결과를 메인 피드에 표시
                             setMessages(prev => prev.map(m =>
                                 m.id === botMessageId ? { ...m, streaming: true, content: fullText || '메인 피드에 검색 결과를 표시했습니다.' } : m
                             ));
@@ -144,16 +140,13 @@ export default function SearchTab({ isGuest, autoSearchQuery }: SearchTabProps) 
         }
     }, [inputMessage, isStreaming, chatSessionId, isGuest]);
 
-    // autoSearchQuery가 전달되면 자동으로 검색 수행
     useEffect(() => {
         if (autoSearchQuery && !autoSearchTriggeredRef.current && !isStreaming) {
             autoSearchTriggeredRef.current = true;
-            // handleSendMessage를 직접 호출하여 검색 실행
             handleSendMessage(null, autoSearchQuery);
         }
     }, [autoSearchQuery, isStreaming, handleSendMessage]);
 
-    // 컴포넌트 언마운트 또는 autoSearchQuery 초기화 시 flag 리셋
     useEffect(() => {
         return () => {
             autoSearchTriggeredRef.current = false;

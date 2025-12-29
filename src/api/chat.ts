@@ -8,9 +8,6 @@ import * as apiClient from "./apiClient";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-/**
- * 첫 채팅: 세션 생성
- */
 export async function startChatSession(): Promise<StartSessionResponse> {
   const res = await fetch(`${API_BASE_URL}/api/chat/sessions/start`, {
     method: "POST",
@@ -26,9 +23,6 @@ export async function startChatSession(): Promise<StartSessionResponse> {
   return data;
 }
 
-/**
- * SSE field parser (공백 보존 버전)
- */
 function parseField(line: string, key: "event" | "data"): string | null {
   const prefix = key + ":";
   if (!line.startsWith(prefix)) return null;
@@ -40,13 +34,9 @@ function parseField(line: string, key: "event" | "data"): string | null {
   return value;
 }
 
-/**
- * buffer에서 SSE message들을 추출
- */
 function drainSSEBuffer(
   buffer: string
 ): { messages: Array<{ event: string; data: string }>; rest: string } {
-  // \r\n과 \n 모두 대응하기 위해 split 정규식 사용 고려 가능하나 유지보수 위해 단순화
   const normalized = buffer.replace(/\r/g, "");
   const parts = normalized.split("\n\n");
   const rest = parts.pop() ?? "";

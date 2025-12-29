@@ -7,11 +7,11 @@ import '../styles/UploadPage.css';
 type UploadPageProps = {
     onUploadSuccess: () => void;
     isPanelOpen?: boolean;
-    editData?: PhotoDetail | null; // 수정 시 전달받을 데이터
+    editData?: PhotoDetail | null;
 };
 
 export default function UploadPage({ onUploadSuccess, isPanelOpen = false, editData }: UploadPageProps) {
-    const isEditMode = !!editData; // editData가 있으면 수정 모드
+    const isEditMode = !!editData;
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [title, setTitle] = useState('');
@@ -21,12 +21,11 @@ export default function UploadPage({ onUploadSuccess, isPanelOpen = false, editD
     const fileInputRef = useRef<HTMLInputElement>(null);
     const today = new Date().toISOString().slice(2, 10).replace(/-/g, '/');
 
-    // 수정 모드일 경우 초기 데이터 세팅
     useEffect(() => {
         if (isEditMode && editData) {
             setTitle(editData.title);
             setDescription(editData.description || '');
-            setPreviewUrl(editData.thumbnailUrl); // 기존 이미지를 미리보기로 표시
+            setPreviewUrl(editData.thumbnailUrl); 
         }
     }, [isEditMode, editData]);
 
@@ -51,7 +50,6 @@ export default function UploadPage({ onUploadSuccess, isPanelOpen = false, editD
 
     const handleSubmit = async () => {
         if (!title.trim()) return alert("제목을 입력해주세요!");
-        // 등록 모드일 때만 파일 필수 체크
         if (!isEditMode && !selectedFile) return alert("사진을 업로드해주세요!");
         if (isSubmitting) return;
 
@@ -59,15 +57,13 @@ export default function UploadPage({ onUploadSuccess, isPanelOpen = false, editD
             setIsSubmitting(true);
             
             if (isEditMode && editData) {
-                // 1. 게시글 수정 API 호출
                 await updatePost(
                     Number(editData.id),
                     { title, description },
-                    selectedFile || undefined // 새 파일이 없으면 undefined 전달 (기존 이미지 유지)
+                    selectedFile || undefined 
                 );
                 alert("게시글이 성공적으로 수정되었습니다!");
             } else {
-                // 2. 새 게시글 등록 API 호출
                 await createPost(
                     { title, description }, 
                     selectedFile!
@@ -75,13 +71,11 @@ export default function UploadPage({ onUploadSuccess, isPanelOpen = false, editD
                 alert("게시글이 성공적으로 등록되었습니다!");
             }
             
-            // 입력 폼 초기화
             setTitle('');
             setDescription('');
             setSelectedFile(null);
             setPreviewUrl(null);
 
-            // 목록 새로고침 및 이동
             onUploadSuccess(); 
             
         } catch (error: any) {
@@ -104,7 +98,6 @@ export default function UploadPage({ onUploadSuccess, isPanelOpen = false, editD
                 </h2>
                 
                 <div className="upload-flex-content">
-                    {/* 왼쪽: 이미지 업로드 영역 */}
                     <section 
                         className={`upload-left ${previewUrl ? 'has-image' : ''}`}
                         onDragOver={(e) => e.preventDefault()}
@@ -144,7 +137,6 @@ export default function UploadPage({ onUploadSuccess, isPanelOpen = false, editD
                         )}
                     </section>
 
-                    {/* 오른쪽: 정보 입력 영역 */}
                     <section className="upload-right">
                         <div className="form-group">
                             <input 

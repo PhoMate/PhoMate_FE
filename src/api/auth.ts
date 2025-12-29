@@ -1,9 +1,7 @@
 import * as apiClient from './apiClient';
 import type { GoogleLoginRequestDTO, GoogleLoginResponseDTO, RefreshRequestDTO } from '../types/auth';
-import { clearPkceVerifier } from '../utils/pkce';
-import { API_BASE_URL } from '../config/env';
 
-// ============ 타입 정의 ============
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export interface LoginRequest {
   email: string;
@@ -22,55 +20,61 @@ export interface AuthResponse {
   refreshToken: string;
 }
 
-// ============ Google OAuth ============
-
-/**
- * Google 로그인
- * POST /api/auth/google
- */
 export async function googleLogin(params: GoogleLoginRequestDTO): Promise<GoogleLoginResponseDTO | null> {
   if (!params.codeVerifier) {
     console.warn('googleLogin: codeVerifier is empty');
   } else {
     console.log('googleLogin: codeVerifier', params.codeVerifier);
   }
-  try {
-    const payload = await apiClient.post<GoogleLoginResponseDTO | { data: GoogleLoginResponseDTO }>(
-      '/api/auth/google',
-      params
-    );
 
-    const data: any = (payload as any)?.data ?? payload;
+  const res = await fetch(`${API_BASE_URL}/api/auth/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    redirect: 'manual', 
+    body: JSON.stringify(params),
+  });
+
+  console.log('redirected?', res.redirected, 'url:', res.url, 'status:', res.status);
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Google 로그인 실패 (${res.status}) ${text || ''}`);
+  }
+ 
+  const contentType = res.headers.get('content-type') || '';
+  try {
+    let payload: any = null;
+    if (contentType.includes('application/json')) {
+      payload = await res.json();
+    } else {
+      const text = await res.text();
+      payload = text ? JSON.parse(text) : null;
+    }
+
+    if (!payload) {
+      throw new Error('로그인 응답이 비어 있습니다.');
+    }
+
+    const data = payload.data?.accessToken ? payload.data : payload;
     const result: GoogleLoginResponseDTO = {
       memberId: Number(data.memberId),
       accessToken: String(data.accessToken || ''),
       refreshToken: String(data.refreshToken || ''),
     };
 
-    if (!result.accessToken) {
-      throw new Error('액세스 토큰이 응답에 없습니다.');
+    if (!result.accessToken || !result.refreshToken) {
+      throw new Error('토큰이 응답에 없습니다.');
     }
-
-    saveTokens({
-      memberId: result.memberId,
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken || getRefreshToken() || '',
-    });
 
     return result;
   } catch (e: any) {
     const msg = e?.message || String(e);
-    console.error('googleLogin error:', msg);
+    console.error('googleLogin parse error:', msg);
     throw new Error(msg);
   }
 }
 
-// ============ 토큰 관리 ============
-
-/**
- * 토큰 재발급
- * POST /api/auth/reissue
- */
 export async function reissueToken(
   refreshToken: string
 ): Promise<GoogleLoginResponseDTO> {
@@ -97,52 +101,33 @@ export async function reissueToken(
     accessToken: data.accessToken,
     refreshToken: data.refreshToken,
   };
-  // 저장 및 반환 누락 수정
-  saveTokens(tokens as any);
+
+  saveTokens(tokens);
   return tokens;
 }
 
-/**
- * 로그아웃
- */
 export function logout(): void {
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('memberId');
-  localStorage.removeItem('isGuest');
-  // PKCE verifier 키 정리
-  clearPkceVerifier();
-  sessionStorage.removeItem('pkce_code_verifier'); // 레거시 키도 함께 제거
+  sessionStorage.removeItem('pkce_verifier');
+  sessionStorage.removeItem('pkce_code_verifier'); 
 }
 
-/**
- * 저장된 토큰 가져오기
- */
 export function getAccessToken(): string {
   return localStorage.getItem('accessToken') || '';
 }
 
-/**
- * 저장된 refresh 토큰 가져오기
- */
 export function getRefreshToken(): string {
   return localStorage.getItem('refreshToken') || '';
 }
 
-/**
- * 토큰 저장
- */
 export function saveTokens(data: AuthResponse): void {
   localStorage.setItem('accessToken', data.accessToken);
   localStorage.setItem('refreshToken', data.refreshToken);
   localStorage.setItem('memberId', data.memberId.toString());
-  // 실사용자 로그인 시 게스트 모드 해제
-  localStorage.removeItem('isGuest');
 }
 
-/**
- * 로그인 여부 확인
- */
 export function isLoggedIn(): boolean {
   return !!localStorage.getItem('accessToken');
 }

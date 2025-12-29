@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Heart, Wand2, Search, Save } from 'lucide-react';
 import { PhotoDetail } from '../types';
-import { togglePostLike } from '../api/posts';
+import { togglePhotoLike, savePhoto } from '../api/photos';
 import '../styles/PhotoDetailModal.css';
 
 type PhotoDetailModalProps = {
@@ -9,8 +9,8 @@ type PhotoDetailModalProps = {
     isOpen: boolean;
     onClose: () => void;
     onAiEdit?: (photo: PhotoDetail) => void;
-    onAiSearch?: (searchQuery: string) => void;
-    onAuthorClick?: (authorId: number) => void;
+    onAiSearch?: (photo: PhotoDetail) => void;
+    onAuthorClick: (authorId: number) => void;
     currentMemberId?: string; 
 };
 
@@ -20,36 +20,23 @@ export default function PhotoDetailModal({
     onClose,
     onAiEdit,
     onAiSearch,
-    onAuthorClick,
     currentMemberId,
 }: PhotoDetailModalProps) {
     const [isLiked, setIsLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(photo?.likeCount || 0);
 
-    useEffect(() => {
-        setIsLiked(false);
-        setLikeCount(photo?.likeCount || 0);
-    }, [photo]);
-
     if (!isOpen || !photo) return null;
 
     const handleLike = async () => {
         if (!photo) return;
-        try {
-            const res = await togglePostLike(Number(photo.id));
-            setIsLiked(res.liked);
-            setLikeCount(res.likeCount);
-            // FeedPage에 좋아요 업데이트 알림
-            window.dispatchEvent(new CustomEvent('phomate:like-updated', {
-                detail: {
-                    postId: Number(photo.id),
-                    likeCount: res.likeCount,
-                    liked: res.liked
-                }
-            }));
-            return;
-        } catch {
-            // 실패 시 로컬 토글로 폴백
+        if (currentMemberId) {
+            try {
+                const res = await togglePhotoLike(currentMemberId, photo.id);
+                setIsLiked(res.liked);
+                setLikeCount(res.likeCount);
+                return;
+            } catch {
+            }
         }
         setIsLiked(!isLiked);
         setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
@@ -58,7 +45,19 @@ export default function PhotoDetailModal({
     const handleSave = async () => {
         if (!photo) return;
 
-        // 로컬 다운로드 폴백
+        if (currentMemberId) {
+            try {
+                await savePhoto(currentMemberId, {
+                    originalUrl: photo.originalUrl,
+                    thumbnailUrl: photo.thumbnailUrl,
+                    title: photo.title,
+                });
+                alert('사진이 저장되었습니다.');
+                return;
+            } catch (e) {
+            }
+        }
+
         try {
             const resp = await fetch(photo.originalUrl);
             const blob = await resp.blob();
@@ -78,12 +77,10 @@ export default function PhotoDetailModal({
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-container" onClick={e => e.stopPropagation()}>
-                {/* Close Button */}
                 <button className="modal-close-btn" onClick={onClose}>
                     <X className="icon" />
                 </button>
 
-                {/* Photo Viewer */}
                 <div className="modal-content">
                     <div className="photo-viewer">
                         <img
@@ -93,7 +90,6 @@ export default function PhotoDetailModal({
                         />
                     </div>
 
-                    {/* Photo Meta */}
                     <div className="photo-meta">
                         <div className="meta-header">
                             <h2 className="photo-title">{photo.title}</h2>
@@ -114,12 +110,7 @@ export default function PhotoDetailModal({
                             {photo.uploadedBy && (
                                 <div className="meta-item">
                                     <span className="meta-label">업로더:</span>
-                                    <button
-                                        className="meta-author-btn"
-                                        onClick={() => photo.authorId && onAuthorClick?.(photo.authorId)}
-                                    >
-                                        {photo.uploadedBy}
-                                    </button>
+                                    <span className="meta-value">{photo.uploadedBy}</span>
                                 </div>
                             )}
                             {photo.createdAt && (
@@ -132,7 +123,6 @@ export default function PhotoDetailModal({
                             )}
                         </div>
 
-                        {/* AI Action Buttons + 저장 */}
                         <div className="action-buttons action-buttons--three">
                             <button
                                 className="action-btn ai-edit-btn"
@@ -143,7 +133,7 @@ export default function PhotoDetailModal({
                             </button>
                             <button
                                 className="action-btn ai-search-btn"
-                                onClick={() => onAiSearch?.(photo.title || '')}
+                                onClick={() => onAiSearch?.(photo)}
                             >
                                 <Search className="icon" />
                                 <span>유사 사진 찾기</span>

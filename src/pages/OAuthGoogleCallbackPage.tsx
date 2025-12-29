@@ -8,7 +8,7 @@ export default function OAuthGoogleCallbackPage() {
   const invokedRef = useRef(false);
 
   useEffect(() => {
-    if (invokedRef.current) return; // StrictMode 등 중복 호출 방지
+    if (invokedRef.current) return; 
     invokedRef.current = true;
     const handleCallback = async () => {
       try {
@@ -27,7 +27,6 @@ export default function OAuthGoogleCallbackPage() {
           throw new Error('토큰 응답을 받지 못했습니다.');
         }
         clearPkceVerifier();
-        // 완전히 새로고침하여 App이 새 토큰 상태로 초기화되도록 함
         window.location.replace('/');
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);

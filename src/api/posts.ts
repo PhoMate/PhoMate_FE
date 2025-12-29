@@ -10,9 +10,6 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-/**
- * 토큰 가져오기 (따옴표 제거 로직 포함)
- */
 const getToken = () => {
   let token = localStorage.getItem('accessToken');
   if (token) {
@@ -23,28 +20,17 @@ const getToken = () => {
   return token;
 };
 
-/**
- * 인증 헤더 생성 헬퍼
- */
 const getAuthHeaders = (): Record<string, string> => {
   const token = getToken();
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 };
 
-/**
- * 쿼리스트링 생성 헬퍼
- */
 const qs = (params: Record<string, any>) =>
   Object.entries(params)
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
     .join('&');
 
-// --- API 함수 ---
-
-/**
- * 1. 게시글 목록 조회
- */
 export async function fetchPosts(params: PostListParams = {}): Promise<PostFeedResponseDTO> {
   const query = qs(params);
   const res = await fetch(`${API_BASE_URL}/api/posts${query ? `?${query}` : ''}`, { 
@@ -57,10 +43,6 @@ export async function fetchPosts(params: PostListParams = {}): Promise<PostFeedR
   return res.json();
 }
 
-/**
- * 2. 게시글 상세 조회
- * GET /api/posts/{postId}
- */
 export async function fetchPostDetail(postId: number): Promise<PostDetailResponseDTO> {
   const res = await fetch(`${API_BASE_URL}/api/posts/${postId}`, { 
     headers: {
@@ -72,10 +54,6 @@ export async function fetchPostDetail(postId: number): Promise<PostDetailRespons
   return res.json();
 }
 
-/**
- * 3. 게시글 등록 (Multipart/form-data)
- * POST /api/posts
- */
 export async function createPost(payload: PostCreateRequestDTO, imageFile: File): Promise<{ postId: number }> {
   const token = getToken();
   if (!token) throw new Error("401_NO_TOKEN");
@@ -103,28 +81,21 @@ export async function createPost(payload: PostCreateRequestDTO, imageFile: File)
 
   const text = await res.text();
   if (!text) {
-    console.log("✅ 서버 응답이 비어있으나 성공으로 간주합니다.");
     return { postId: 0 };
   }
 
   return JSON.parse(text);
 }
 
-/**
- * 4. 게시글 수정 (Multipart/form-data)
- * PATCH /api/posts/{postId}
- */
 export async function updatePost(postId: number, payload: PostCreateRequestDTO, imageFile?: File): Promise<void> {
   const token = getToken();
   if (!token) throw new Error("401_NO_TOKEN");
 
   const formData = new FormData();
   
-  // 제목과 설명 추가 (명세: 안 보내거나 ""이면 수정되지 않음)
   formData.append('title', payload.title);
   formData.append('description', payload.description || '');
   
-  // 이미지를 새로 첨부한 경우에만 추가
   if (imageFile) {
     formData.append('image', imageFile);
   }
@@ -144,14 +115,8 @@ export async function updatePost(postId: number, payload: PostCreateRequestDTO, 
     const errorText = await res.text();
     throw new Error(`게시글 수정 실패: ${res.status} - ${errorText}`);
   }
-  
-  // 204 No Content인 경우 별도의 반환값 없음
 }
 
-/**
- * 5. 게시글 삭제
- * DELETE /api/posts/{postId}
- */
 export async function deletePost(postId: number): Promise<void> {
   let token = localStorage.getItem('accessToken');
   if (token) token = token.replace(/"/g, ''); 
@@ -164,7 +129,6 @@ export async function deletePost(postId: number): Promise<void> {
     method: 'DELETE',
     headers: { 
       'Authorization': `Bearer ${token}`,
-      // 500 에러 시 서버가 JSON 형태의 에러 메시지를 잘 줄 수 있도록 추가
       'Accept': 'application/json'
     } as HeadersInit,
   });
@@ -173,7 +137,6 @@ export async function deletePost(postId: number): Promise<void> {
     const errorText = await res.text();
     console.error(`❌ 서버 내부 에러 (500):`, errorText);
     
-    // 에러 객체를 분석해서 사용자에게 더 친절하게 알림
     try {
       const errorJson = JSON.parse(errorText);
       throw new Error(errorJson.message || `서버 에러: ${res.status}`);
@@ -183,9 +146,6 @@ export async function deletePost(postId: number): Promise<void> {
   }
 }
 
-/**
- * 6. 좋아요 토글
- */
 export async function togglePostLike(postId: number): Promise<LikesToggleResponseDTO> {
   const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/likes`, {
     method: 'POST',
@@ -195,9 +155,6 @@ export async function togglePostLike(postId: number): Promise<LikesToggleRespons
   return res.json();
 }
 
-/**
- * 7. 특정 회원 사진 조회
- */
 export async function getMemberPhotos(memberId: string): Promise<PostFeedResponseDTO> {
   return fetchPosts({ memberId } as any);
 }

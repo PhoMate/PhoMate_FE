@@ -19,7 +19,6 @@ type EditTabProps = {
     onUpdatePhoto?: (newUrl: string) => void;
 };
 
-// 세션 ID 추출 헬퍼 함수
 const extractSessionId = (res: any): number | null => {
     if (!res) return null;
     if (typeof res === 'number') return res;
@@ -27,7 +26,6 @@ const extractSessionId = (res: any): number | null => {
 };
 
 export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditTabProps) {
-    // 상태 관리
     const [messages, setMessages] = useState<Message[]>([
         { id: 'm-1', role: 'bot', content: '사진을 어떻게 수정해드릴까요?', streaming: false, type: 'text' },
     ]);
@@ -38,17 +36,14 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
     const [editChatSessionId, setEditChatSessionId] = useState<number | null>(null);
     const [currentEditUrl, setCurrentEditUrl] = useState<string | null>(null);
 
-    // Refs
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
-    const sessionRef = useRef<number | null>(null); // Cleanup용 세션 ID 추적
-    const isSavedRef = useRef(false); // 저장 완료 여부 추적
+    const sessionRef = useRef<number | null>(null);
+    const isSavedRef = useRef(false); 
 
-    // 메시지 스크롤 자동 이동
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    // 초기화 및 생명주기 관리
     useEffect(() => {
         let isMounted = true;
 
@@ -58,7 +53,6 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
             try {
                 setIsEditLoading(true);
                 
-                // 1. 편집 및 채팅 세션 시작
                 const editRes = await startEditSession(Number(selectedPhoto.id));
                 const extractedEditId = extractSessionId(editRes);
                 if (!extractedEditId) throw new Error("편집 세션 ID 없음");
@@ -72,9 +66,8 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
                     setEditChatSessionId(newChatSessionId);
                     setCurrentEditUrl(selectedPhoto.originalUrl || selectedPhoto.thumbnailUrl);
                     
-                    // Ref에 ID 저장 (Cleanup 시 사용)
                     sessionRef.current = extractedEditId;
-                    console.log(`✅ 세션 시작: Edit=${extractedEditId}`);
+                    console.log(`세션 시작: Edit=${extractedEditId}`);
                 }
 
             } catch (e) {
@@ -87,20 +80,16 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
 
         initializeEditSession();
 
-        // Cleanup: 컴포넌트 언마운트 시 저장되지 않은 세션 삭제
         return () => {
             isMounted = false;
-            
-            // "저장(finalize)"을 누르지 않았는데 ID가 있다면 -> 삭제 (쓰레기 정리)
+          
             if (!isSavedRef.current && sessionRef.current) {
                 console.log(`🗑️ 세션 삭제(초기화): ${sessionRef.current}`);
                 deleteEditSession(sessionRef.current).catch(err => console.warn("삭제 실패(이미 없음)", err));
             }
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedPhoto.id]); 
 
-    // 채팅 전송 핸들러
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         const text = inputMessage.trim();
@@ -134,7 +123,6 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
         }
     };
 
-    // 실행 취소
     const handleUndo = async () => {
         if (!editSessionId) return;
         try {
@@ -143,7 +131,6 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
         } catch (e) { alert('이전 단계가 없습니다.'); }
     };
 
-    // 다시 실행
     const handleRedo = async () => {
         if (!editSessionId) return;
         try {
@@ -152,15 +139,13 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
         } catch (e) { alert('다음 단계가 없습니다.'); }
     };
 
-    // 최종 저장 및 종료 (강력해진 버전)
     const handleFinalize = async () => {
         if (!editSessionId) return;
         
         try {
             setIsEditLoading(true);
-            isSavedRef.current = true; // 저장 플래그 활성화
+            isSavedRef.current = true;
 
-            // 1. 서버에 저장 요청
             const res = await finalizeEdit(editSessionId);
             const finalImage = typeof res === 'string' ? res : (res.finalUrl || res.imageUrl);
             
@@ -169,7 +154,6 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
                 console.log("다운로드 시도:", finalImage);
 
                 try {
-                    // 2. 우선 fetch를 통한 깔끔한 다운로드 시도 (서버 CORS 해결 시 작동)
                     const response = await fetch(finalImage, { 
                         method: 'GET',
                         mode: 'cors',
@@ -192,7 +176,6 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
                     alert('이미지가 기기에 저장되었습니다.');
 
                 } catch (error) {
-                    // 3. 실패 시 차선책: 직접 링크 방식 (CORS여도 작동, 단 새 탭이 열릴 수 있음)
                     console.warn("Fetch 다운로드 실패, 직접 링크로 전환합니다.", error);
                     
                     const link = document.createElement('a');
@@ -210,7 +193,7 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
                 onClose(); 
             }
         } catch (e: any) {
-            isSavedRef.current = false; // 실패 시 플래그 복구
+            isSavedRef.current = false; 
             alert(`저장 실패: ${e.message}`);
         } finally {
             setIsEditLoading(false);

@@ -1,7 +1,3 @@
-/**
- * Google OAuth 설정
- */
-
 import { SITE_ORIGIN } from './env';
 
 export const GOOGLE_CONFIG = {

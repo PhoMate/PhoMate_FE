@@ -38,8 +38,8 @@ type ProfilePageProps = {
     userInfo?: UserInfo;
     isMe?: boolean;
     isPanelOpen?: boolean;
-    onEditClick?: (photo: Photo) => void; // App.tsx의 handleEditRequest와 연결
-    onDeleteClick?: (photo: Photo) => void; // App.tsx의 handleDeletePhoto와 연결
+    onEditClick?: (photo: Photo) => void;
+    onDeleteClick?: (photo: Photo) => void;
 };
 
 export default function ProfilePage({ 
@@ -76,7 +76,6 @@ export default function ProfilePage({
 
             if (targetId) {
                 try {
-                    // (1) 프로필 정보 가져오기
                     const profileData = await getMemberProfile(targetId) as MemberProfileResponse;
                     
                     setFetchedProfile({
@@ -85,14 +84,13 @@ export default function ProfilePage({
                         profileUrl: profileData.profileImageUrl,
                     });
 
-                    // (2) 사진 목록 가져오기
                     const data = await getMemberPhotos(targetId) as PhotoResponse;
                     
                     if (data && data.items) {
                         const photoList = data.items.map((item) => ({
                             id: String(item.postId),
                             thumbnailUrl: item.thumbnailUrl,
-                            originalUrl: item.thumbnailUrl, // 명세에 맞춰 필요한 경우 수정
+                            originalUrl: item.thumbnailUrl, 
                             title: item.title,
                             likeCount: item.likeCount,
                             likedByMe: item.likedByMe,
