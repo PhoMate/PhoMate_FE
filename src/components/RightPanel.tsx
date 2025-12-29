@@ -13,8 +13,6 @@ import {
     uploadDirectEdit 
 } from '../api/edit';
 
-// Components & Types
-import DirectEditor from './DirectEditor';
 import { PhotoDetail } from '../types';
 
 // --- Types ---
@@ -382,15 +380,6 @@ export default function RightPanel({ isOpen, onClose, isGuest = false, selectedP
                     </div>
                 </form>
             </aside>
-
-            {/* Direct Editor Modal */}
-            {isDirectEditing && currentEditUrl && (
-                <DirectEditor
-                    imageUrl={currentEditUrl}
-                    onSave={handleDirectEditSave}
-                    onCancel={() => setIsDirectEditing(false)}
-                />
-            )}
         </>
     );
 }

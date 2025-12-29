@@ -25,7 +25,9 @@ function MainApp({ isGuest }: MainAppProps) {
     const [selectedPhoto, setSelectedPhoto] = useState<PhotoDetail | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [targetUser, setTargetUser] = useState<FollowUser | null>(null);
-    const [photoToEdit, setPhotoToEdit] = useState<PhotoDetail | null>(null);
+    
+    // 🔥 이 state가 문제였습니다. 닫을 때 얘를 비워줘야 합니다.
+    const [photoToEdit, setPhotoToEdit] = useState<PhotoDetail | null>(null); 
     const [editingPost, setEditingPost] = useState<PhotoDetail | null>(null);
 
     const handleNavClick = (nav: string) => {
@@ -51,7 +53,6 @@ function MainApp({ isGuest }: MainAppProps) {
             alert('로그인 후 프로필을 볼 수 있습니다.');
             return;
         }
-        console.log('handleAuthorClick called with authorId:', authorId);
         try {
             const memberInfo = await getMemberInfo(authorId);
             const newTargetUser: FollowUser = {
@@ -101,7 +102,7 @@ function MainApp({ isGuest }: MainAppProps) {
             alert('로그인 후 AI 편집 기능을 사용할 수 있습니다.');
             return;
         }
-        setPhotoToEdit(photo);
+        setPhotoToEdit(photo); // 여기서 사진을 넣으면 패널이 열릴 때 편집 탭으로 감
         setIsDetailModalOpen(false);
         setIsRightPanelOpen(true);
     };
@@ -136,6 +137,12 @@ function MainApp({ isGuest }: MainAppProps) {
 
     const handleLoginRedirect = () => {
         navigate('/login');
+    };
+
+    // 🔥 [핵심 수정] 패널 닫기 핸들러
+    const handleCloseRightPanel = () => {
+        setIsRightPanelOpen(false); // 1. 패널 닫기
+        setPhotoToEdit(null);       // 2. 편집 중이던 사진 정보 비우기 (초기화)
     };
 
     return (
@@ -195,9 +202,10 @@ function MainApp({ isGuest }: MainAppProps) {
                 />
             )}
 
+            {/* 🔥 수정된 부분: onClose에 handleCloseRightPanel 전달 */}
             <RightPanel
                 isOpen={isRightPanelOpen}
-                onClose={() => setIsRightPanelOpen(false)}
+                onClose={handleCloseRightPanel} 
                 isGuest={isGuest}
                 selectedPhoto={photoToEdit} 
                 onUpdatePhoto={(newUrl) => {

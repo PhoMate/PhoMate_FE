@@ -8,10 +8,8 @@ import {
     undoEdit, 
     redoEdit, 
     finalizeEdit, 
-    uploadDirectEdit,
     deleteEditSession
 } from '../../api/edit';
-import DirectEditor from '../DirectEditor';
 import { PhotoDetail } from '../../types';
 import MessageItem, { Message } from './MessageItem';
 
@@ -21,7 +19,7 @@ type EditTabProps = {
     onUpdatePhoto?: (newUrl: string) => void;
 };
 
-// ID 추출 헬퍼
+// 세션 ID 추출 헬퍼 함수
 const extractSessionId = (res: any): number | null => {
     if (!res) return null;
     if (typeof res === 'number') return res;
@@ -29,72 +27,70 @@ const extractSessionId = (res: any): number | null => {
 };
 
 export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditTabProps) {
+    // 상태 관리
     const [messages, setMessages] = useState<Message[]>([
         { id: 'm-1', role: 'bot', content: '사진을 어떻게 수정해드릴까요?', streaming: false, type: 'text' },
     ]);
     const [inputMessage, setInputMessage] = useState('');
     const [isEditLoading, setIsEditLoading] = useState(false);
     
-    // 세션 ID 상태
     const [editSessionId, setEditSessionId] = useState<number | null>(null);
     const [editChatSessionId, setEditChatSessionId] = useState<number | null>(null);
     const [currentEditUrl, setCurrentEditUrl] = useState<string | null>(null);
-    const [isDirectEditing, setIsDirectEditing] = useState(false);
 
+    // Refs
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const sessionRef = useRef<number | null>(null); 
+    const isSavedRef = useRef(false); 
 
-    // 스크롤 자동 이동
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    // 세션 정리 (언마운트 시)
+    // 초기화 및 생명주기 관리
     useEffect(() => {
-        return () => {
-            if (editSessionId) {
-                deleteEditSession(editSessionId).catch(() => {});
-            }
-        };
-    }, [editSessionId]);
+        let isMounted = true;
 
-    // 초기화 로직
-    useEffect(() => {
         const initializeEditSession = async () => {
             if (!selectedPhoto) return;
-            // 이미 초기화된 상태면 스킵 (selectedPhoto ID가 바뀌었을 때만 재실행하려면 의존성 확인 필요)
             
             try {
                 setIsEditLoading(true);
                 
-                // 1. 편집 세션 시작
                 const editRes = await startEditSession(Number(selectedPhoto.id));
                 const extractedEditId = extractSessionId(editRes);
                 if (!extractedEditId) throw new Error("편집 세션 ID 없음");
 
-                setEditSessionId(extractedEditId);
-                setCurrentEditUrl(selectedPhoto.originalUrl || selectedPhoto.thumbnailUrl);
-
-                // 2. 채팅 세션 시작
                 const chatRes = await startChatSession();
                 const newChatSessionId = extractSessionId(chatRes);
                 if (!newChatSessionId) throw new Error("채팅 세션 ID 없음");
                 
-                setEditChatSessionId(newChatSessionId);
-                console.log(`세션 시작: Edit=${extractedEditId}, Chat=${newChatSessionId}`);
+                if (isMounted) {
+                    setEditSessionId(extractedEditId);
+                    setEditChatSessionId(newChatSessionId);
+                    setCurrentEditUrl(selectedPhoto.originalUrl || selectedPhoto.thumbnailUrl);
+                    
+                    sessionRef.current = extractedEditId;
+                    console.log(`✅ 세션 시작: Edit=${extractedEditId}`);
+                }
 
             } catch (e) {
                 console.error(e);
-                alert('편집 세션을 시작할 수 없습니다.');
+                if (isMounted) alert('편집 세션을 시작할 수 없습니다.');
             } finally {
-                setIsEditLoading(false);
+                if (isMounted) setIsEditLoading(false);
             }
         };
 
-        // ID가 바뀔 때마다 세션 초기화
-        setEditSessionId(null); 
-        setEditChatSessionId(null);
-        setMessages([{ id: 'm-1', role: 'bot', content: '사진을 어떻게 수정해드릴까요?', streaming: false, type: 'text' }]);
         initializeEditSession();
+
+        return () => {
+            isMounted = false;
+            if (!isSavedRef.current && sessionRef.current) {
+                console.log(`🗑️ 세션 삭제(초기화): ${sessionRef.current}`);
+                deleteEditSession(sessionRef.current).catch(err => console.warn("삭제 실패(이미 없음)", err));
+            }
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedPhoto.id]); 
 
@@ -104,42 +100,27 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
         if (!text || isEditLoading) return;
 
         if (!editSessionId || !editChatSessionId) {
-            alert('세션이 준비되지 않았습니다. 잠시만 기다려주세요.');
+            alert('세션이 준비되지 않았습니다.');
             return;
         }
 
-        const userMessage: Message = {
-            id: crypto.randomUUID(),
-            role: 'user',
-            content: text,
-            streaming: false,
-            type: 'text',
-        };
+        const userMessage: Message = { id: crypto.randomUUID(), role: 'user', content: text, streaming: false, type: 'text' };
         setMessages(prev => [...prev, userMessage]);
         setInputMessage('');
-
         setIsEditLoading(true);
-        const botMsgId = crypto.randomUUID();
-        
-        setMessages(prev => [...prev, {
-            id: botMsgId, role: 'bot', content: 'AI가 이미지를 수정 중입니다...', streaming: true, type: 'text'
-        }]);
 
         try {
             const res = await sendChatEdit(editChatSessionId, editSessionId, text);
-            
             if (res.editedUrl) {
                 setCurrentEditUrl(res.editedUrl);
-                setMessages(prev => prev.map(m => m.id === botMsgId ? {
+                setMessages(prev => prev.map(m => m.role === 'bot' && m.streaming ? {
                     ...m, content: res.assistantContent || '수정이 완료되었습니다.', streaming: false
                 } : m));
-            } else {
-                throw new Error('응답에 이미지 URL이 없습니다.');
             }
         } catch (e) {
             console.error(e);
-            setMessages(prev => prev.map(m => m.id === botMsgId ? {
-                ...m, content: '수정 중 오류가 발생했습니다.', streaming: false
+            setMessages(prev => prev.map(m => m.role === 'bot' && m.streaming ? {
+                ...m, content: '오류가 발생했습니다.', streaming: false
             } : m));
         } finally {
             setIsEditLoading(false);
@@ -162,92 +143,84 @@ export default function EditTab({ selectedPhoto, onClose, onUpdatePhoto }: EditT
         } catch (e) { alert('다음 단계가 없습니다.'); }
     };
 
+    // 🔥 [수정] 403 CORS 에러 때문에 fetch를 포기하고 바로 다운로드 링크를 실행하는 버전
     const handleFinalize = async () => {
         if (!editSessionId) return;
-        try {
-            const res = await finalizeEdit(editSessionId);
-            const finalImage = (res as any).finalUrl || res.imageUrl;
-            
-            if (finalImage && onUpdatePhoto) {
-                onUpdatePhoto(finalImage);
-            }
-            alert('저장되었습니다.');
-            onClose();
-        } catch (e) { alert('저장 실패'); }
-    };
-
-    const handleDirectEditSave = async (file: File) => {
-        if (!editSessionId) return;
+        
         try {
             setIsEditLoading(true);
-            const res = await uploadDirectEdit(editSessionId, file);
-            if (res.imageUrl) setCurrentEditUrl(res.imageUrl);
-            setIsDirectEditing(false);
-        } catch (e) {
-            alert('업로드 실패');
+            isSavedRef.current = true; // 저장 플래그 활성화
+
+            // 1. 서버에 저장 요청
+            const res = await finalizeEdit(editSessionId);
+            const finalImage = typeof res === 'string' ? res : (res.finalUrl || res.imageUrl);
+            
+            if (finalImage) {
+                if (onUpdatePhoto) onUpdatePhoto(finalImage);
+
+                console.log("다운로드 시도(Direct Link):", finalImage);
+
+                // 2. CORS 문제로 fetch가 불가능하므로, 바로 <a> 태그 생성하여 클릭
+                // 주의: CloudFront가 Content-Disposition 헤더를 주지 않으면 새 탭에서 열릴 수 있음
+                const link = document.createElement('a');
+                link.href = finalImage;
+                link.target = "_blank"; // 새 탭에서 열기 (보안 차단 방지)
+                link.rel = "noopener noreferrer";
+                
+                // download 속성은 same-origin(같은 도메인)이 아니면 무시될 수 있음
+                // 하지만 최신 브라우저에서 사용자 개입(클릭)으로 간주되면 다운로드가 될 수도 있음
+                link.download = `phomate_result.jpg`; 
+                
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // 안내 메시지 수정
+                alert('저장이 완료되었습니다. (보안 정책으로 인해 새 탭이 열리면 이미지를 우클릭하여 저장해주세요)');
+                
+                onClose(); 
+            }
+        } catch (e: any) {
+            isSavedRef.current = false; // 실패 시 플래그 복구
+            alert(`저장 실패: ${e.message}`);
         } finally {
             setIsEditLoading(false);
         }
     };
 
-    // 🔥 [수정] div wrapper를 제거하고 Fragment(<>) 사용 -> CSS 레이아웃 복구
     return (
-        <>
-            <div className="edit-body">
-                <div className="edit-preview-area">
-                    {isEditLoading && (
-                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-                            처리 중...
-                        </div>
-                    )}
-                    {currentEditUrl ? (
-                        <img src={currentEditUrl} alt="Editing" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                    ) : (
-                        <div style={{ color: '#aaa' }}>편집할 이미지가 없습니다.</div>
-                    )}
-                </div>
-
-                <div className="edit-controls">
-                    <button onClick={handleUndo} className="control-btn" title="Undo"><Undo size={18} /></button>
-                    <button onClick={handleRedo} className="control-btn" title="Redo"><Redo size={18} /></button>
-                    <button onClick={() => setIsDirectEditing(true)} className="control-btn" style={{ fontSize: '13px' }}>
-                        직접 편집
-                    </button>
-                </div>
-                
-                <div className="chat-body" style={{ padding: 0, background: 'none' }}>
-                    {messages.map(msg => <MessageItem key={msg.id} msg={msg} />)}
-                    <div ref={messagesEndRef} />
-                </div>
-
-                <button onClick={handleFinalize} className="apply-btn">
-                    저장 및 종료
-                </button>
+        <div className="edit-body">
+            <div className="edit-preview-area">
+                {isEditLoading && (
+                    <div className="loading-overlay" style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.5)', zIndex:10, color:'white', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                        처리 중...
+                    </div>
+                )}
+                {currentEditUrl ? (
+                    <img src={currentEditUrl} alt="Editing" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                ) : (
+                    <div style={{ color: '#aaa' }}>이미지가 없습니다.</div>
+                )}
             </div>
+
+            <div className="edit-controls">
+                <button onClick={handleUndo} className="control-btn" title="실행 취소"><Undo size={18} /></button>
+                <button onClick={handleRedo} className="control-btn" title="다시 실행"><Redo size={18} /></button>
+            </div>
+            
+            <div className="chat-body" style={{flex:1, overflowY:'auto'}}>
+                {messages.map(msg => <MessageItem key={msg.id} msg={msg} />)}
+                <div ref={messagesEndRef} />
+            </div>
+
+            <button onClick={handleFinalize} className="apply-btn">저장 및 종료</button>
 
             <form className="chat-input-area" onSubmit={handleSendMessage}>
                 <div className="input-wrapper">
-                    <input
-                        type="text"
-                        placeholder="사진에 대한 설명을 적어주세요."
-                        className="chat-input"
-                        value={inputMessage}
-                        onChange={e => setInputMessage(e.target.value)}
-                        disabled={isEditLoading}
-                    />
-                    <button type="submit" className="send-btn" disabled={isEditLoading}>
-                        전송
-                    </button>
+                    <input type="text" className="chat-input" value={inputMessage} onChange={e => setInputMessage(e.target.value)} disabled={isEditLoading} placeholder="메시지 입력..." />
+                    <button type="submit" className="send-btn" disabled={isEditLoading}>전송</button>
                 </div>
             </form>
-
-            {isDirectEditing && currentEditUrl && (
-                <DirectEditor
-                    imageUrl={currentEditUrl}
-                    onSave={handleDirectEditSave}
-                    onCancel={() => setIsDirectEditing(false)}
-                />
-            )}
-        </>
+        </div>
     );
 }
